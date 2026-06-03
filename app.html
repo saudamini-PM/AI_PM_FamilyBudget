@@ -408,7 +408,7 @@ This is not financial advice — you are summarising their own data.`;
 async function callGemini(contents){
   const key = getGeminiKey();
   if(!key) throw new Error('NO_KEY');
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
   const res = await fetch(url,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -421,7 +421,13 @@ async function callGemini(contents){
   });
   if(!res.ok){
     const err = await res.json().catch(()=>({}));
-    throw new Error(err?.error?.message||`API error ${res.status}`);
+    const msg = err?.error?.message || `API error ${res.status}`;
+    // Surface friendly messages for the two most common failures
+    if(res.status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED'))
+      throw new Error('Rate limit reached — you\'ve hit the free-tier quota (15 req/min, 1,500/day). Wait a moment and try again, or enable billing at aistudio.google.com.');
+    if(res.status === 400 && msg.includes('API_KEY_INVALID'))
+      throw new Error('API key is invalid. Please re-enter it via Change AI Key in the top-right menu.');
+    throw new Error(msg);
   }
   return res.json();
 }
@@ -1439,7 +1445,7 @@ function renderChat(){
       </div>
       <div class="flex items-center gap-2 text-sm">
         <div class="w-2 h-2 rounded-full ${isDemo?'bg-amber':'bg-sage'} animate-pulse"></div>
-        <span class="font-600 text-ink/60">${isDemo?'Demo mode':'Gemini 2.0 Flash'}</span>
+        <span class="font-600 text-ink/60">${isDemo?'Demo mode':'Gemini 1.5 Flash'}</span>
       </div>
     </div>
 
