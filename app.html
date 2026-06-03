@@ -780,9 +780,29 @@ function renderShell(content){
             ${n.id==='transactions'&&pendingCount>0?`<span class="bg-coral text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">${pendingCount}</span>`:''}
           </button>`).join('')}
         </nav>
-        <div class="flex items-center gap-3">
+        <div class="relative flex items-center gap-3">
           <div class="text-sm font-600 text-ink/60 hidden sm:block">${escapeHtml(S.household?.name||'')}</div>
-          <div class="w-9 h-9 rounded-full bg-coral text-white flex items-center justify-center font-bold text-sm fredoka cursor-pointer" title="${escapeHtml(S.user?.name||'')}">${escapeHtml((S.user?.name||'U')[0].toUpperCase())}</div>
+          <!-- Avatar — click to open user menu -->
+          <div id="user-avatar"
+               class="w-9 h-9 rounded-full bg-coral text-white flex items-center justify-center font-bold text-sm fredoka cursor-pointer select-none"
+               title="${escapeHtml(S.user?.name||'')}">
+            ${escapeHtml((S.user?.name||'U')[0].toUpperCase())}
+          </div>
+          <!-- Dropdown menu -->
+          <div id="user-menu"
+               class="hidden absolute right-0 top-11 w-56 bg-white rounded-2xl shadow-xl border border-cream-dark/50 z-50 overflow-hidden py-1">
+            <div class="px-4 py-3 border-b border-cream-dark/50">
+              <div class="font-700 text-sm text-ink truncate">${escapeHtml(S.user?.name||'')}</div>
+              <div class="text-xs text-ink/50 truncate">${escapeHtml(S.user?.email||'')}</div>
+            </div>
+            <button onclick="switchKey()" class="w-full text-left px-4 py-2.5 text-sm font-600 text-ink/70 hover:bg-cream flex items-center gap-2.5">
+              🔑 <span>Change AI key</span>
+            </button>
+            <div class="border-t border-cream-dark/40 my-1"></div>
+            <button onclick="logout()" class="w-full text-left px-4 py-2.5 text-sm font-700 text-coral hover:bg-coral/10 flex items-center gap-2.5">
+              🚪 <span>Log out</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -791,7 +811,56 @@ function renderShell(content){
     </main>
   </div>`;
 }
-function attachNavEvents(){} // nav uses inline onclick
+function attachNavEvents(){
+  const avatar = document.getElementById('user-avatar');
+  const menu   = document.getElementById('user-menu');
+  if(!avatar || !menu) return;
+
+  avatar.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.classList.toggle('hidden');
+  });
+
+  // Close when clicking anywhere outside the menu
+  document.addEventListener('click', function closeMenu(e){
+    if(!menu.contains(e.target) && e.target !== avatar){
+      menu.classList.add('hidden');
+    }
+  }, { once: false, capture: false });
+}
+
+function logout(){
+  // Clear session state; preserve nothing — next user starts fresh
+  setState({
+    user: null,
+    household: null,
+    accounts: [],
+    transactions: [],
+    budget: {},
+    goals: [],
+    chatHistory: [],
+    onboardingDone: false,
+  });
+  currentView = 'dashboard';
+  render();
+}
+
+function switchKey(){
+  // Clears the stored key so the API setup screen is shown again after re-login
+  localStorage.removeItem('fba_gemini_key');
+  setState({
+    user: null,
+    household: null,
+    accounts: [],
+    transactions: [],
+    budget: {},
+    goals: [],
+    chatHistory: [],
+    onboardingDone: false,
+  });
+  currentView = 'dashboard';
+  render();
+}
 
 // ═══════════════════════════════════════════════
 // VIEW: DASHBOARD
@@ -1495,6 +1564,8 @@ window.autoCat = autoCat;
 window.txnFilter = txnFilter;
 window.txnSelected = txnSelected;
 window.importState = importState;
+window.logout = logout;
+window.switchKey = switchKey;
 
 render();
   </script>
