@@ -408,7 +408,7 @@ This is not financial advice — you are summarising their own data.`;
 async function callGemini(contents){
   const key = getGeminiKey();
   if(!key) throw new Error('NO_KEY');
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${key}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
   const res = await fetch(url,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
