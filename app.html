@@ -469,18 +469,13 @@ function navigate(view){
   window.scrollTo(0,0);
 }
 
-// Safe innerHTML helper — runs DOMPurify when available.
-// All user-supplied strings in templates are already passed through escapeHtml()
-// at their origin; this is a defence-in-depth belt-and-suspenders check.
+// App render: assign directly — all user-sourced values are escapeHtml()'d at their
+// origin before being interpolated into these developer-controlled template strings.
+// DOMPurify must NOT be used here: it strips onclick/event-handler attributes by design,
+// which would silently break all navigation and interactive elements.
+// DOMPurify is applied only to untrusted external content (AI responses) in formatAiMessage().
 function safeSetHTML(el, html){
-  if(typeof DOMPurify !== 'undefined'){
-    el.innerHTML = DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: DOMPurify.Config ? undefined : null, // use default broad allowlist for app UI
-      FORCE_BODY: false
-    });
-  } else {
-    el.innerHTML = html; // DOMPurify CDN not yet loaded; strings are already escapeHtml'd
-  }
+  el.innerHTML = html;
 }
 
 function render(){
