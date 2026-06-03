@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FamilyBudget — Your household finances, honestly</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <!-- Tailwind play CDN — no fixed hash (dynamic build); restrict with CSP in production -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js, PapaParse, DOMPurify — pinned versions with SRI hashes -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+          integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
+          integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs"
+          crossorigin="anonymous"></script>
+  <!-- DOMPurify — sanitises AI responses before any innerHTML assignment -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"
+          integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a"
+          crossorigin="anonymous"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: { fredoka: ['Fredoka','sans-serif'], nunito: ['Nunito','sans-serif'] },
+        colors: {
+          coral:  { DEFAULT:'#C84830', light:'#FFE8E0', dark:'#A83820' },
+          amber:  { DEFAULT:'#D4A030', light:'#FFF3D0' },
+          sage:   { DEFAULT:'#4AAE7A', light:'#E0F8EC' },
+          sky:    { DEFAULT:'#5888C8', light:'#E0EEFF' },
+          cream:  { DEFAULT:'#FBF6F0', dark:'#EBE3D0', darker:'#DDD0BC' },
+          ink:    { DEFAULT:'#1A1208' }
+        }
+      }}
+    }
+  </script>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:'Nunito',sans-serif;background:#FBF6F0;color:#1A1208}
+    h1,h2,h3,.fredoka{font-family:'Fredoka',sans-serif}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:#f1ece4}
+    ::-webkit-scrollbar-thumb{background:#C8B99A;border-radius:3px}
+    .view{animation:fadeUp .22s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .nav-link{display:flex;align-items:center;gap:8px;padding:9px 16px;border-radius:12px;font-weight:600;font-size:14px;color:#6A5A42;cursor:pointer;transition:.15s}
+    .nav-link:hover{background:#FFE8E0;color:#C84830}
+    .nav-link.active{background:#FFE8E0;color:#C84830}
+    .card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid rgba(200,185,154,.3)}
+    .btn-primary{background:#C84830;color:#fff;font-family:'Fredoka',sans-serif;font-size:16px;font-weight:600;padding:12px 28px;border-radius:12px;border:none;cursor:pointer;transition:.15s}
+    .btn-primary:hover{background:#A83820;transform:translateY(-1px)}
+    .btn-secondary{background:#fff;color:#C84830;font-family:'Fredoka',sans-serif;font-size:15px;font-weight:600;padding:11px 24px;border-radius:12px;border:2px solid #C84830;cursor:pointer;transition:.15s}
+    .btn-secondary:hover{background:#FFE8E0}
+    .btn-ghost{background:transparent;color:#6A5A42;font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;padding:8px 16px;border-radius:10px;border:1px solid #C8B99A;cursor:pointer;transition:.15s}
+    .btn-ghost:hover{border-color:#C84830;color:#C84830}
+    .input{width:100%;padding:11px 14px;border:2px solid #E0D5C0;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:500;background:#fff;outline:none;transition:.15s}
+    .input:focus{border-color:#C84830;box-shadow:0 0 0 3px rgba(200,72,48,.1)}
+    .select{width:100%;padding:10px 14px;border:2px solid #E0D5C0;border-radius:12px;font-family:'Nunito',sans-serif;font-size:15px;background:#fff;outline:none;cursor:pointer}
+    .select:focus{border-color:#C84830}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
+    .badge-housing{background:#E8F4E8;color:#1D3A14}
+    .badge-groceries{background:#E8F4E8;color:#2D5820}
+    .badge-dining{background:#FFE8E0;color:#C84830}
+    .badge-transport{background:#E8F0FF;color:#3A5A9A}
+    .badge-kids{background:#FFF0E8;color:#C86020}
+    .badge-utilities{background:#EBEBF8;color:#4A4A9A}
+    .badge-shopping{background:#F0E8FF;color:#7A4A9A}
+    .badge-entertainment{background:#FFE8F8;color:#9A4A7A}
+    .badge-income{background:#E0F8E8;color:#1A5A2A}
+    .badge-savings{background:#FFF8E0;color:#8A6A10}
+    .badge-healthcare{background:#F8E8FF;color:#6A2A8A}
+    .badge-transfer{background:#F0F0F0;color:#666}
+    .badge-other{background:#F0F0F0;color:#666}
+    .pacing-track{height:8px;background:#EBE3D0;border-radius:4px;overflow:hidden}
+    .pacing-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.34,1.56,.64,1)}
+    .status-ok{background:#4AAE7A}
+    .status-warn{background:#D4A030}
+    .status-over{background:#C84830}
+    .txn-row:hover{background:#FFF4EE}
+    .txn-row.selected{background:#FFE8E0}
+    .dropzone{border:2px dashed #C8B99A;border-radius:16px;transition:.2s;cursor:pointer}
+    .dropzone:hover,.dropzone.drag-over{border-color:#C84830;background:#FFF4EE}
+    .chat-user{background:#C84830;color:#fff;border-radius:18px 18px 4px 18px;padding:12px 16px;font-size:15px;line-height:1.55;max-width:80%;align-self:flex-end}
+    .chat-ai{background:#EBE3D0;color:#1A1208;border-radius:18px 18px 18px 4px;padding:12px 16px;font-size:15px;line-height:1.55;max-width:82%;align-self:flex-start}
+    .chat-typing{display:flex;gap:5px;padding:12px 16px;background:#EBE3D0;border-radius:18px 18px 18px 4px;align-self:flex-start}
+    .typing-dot{width:8px;height:8px;background:#6A5A42;border-radius:50%;animation:bounce 1.2s infinite}
+    .typing-dot:nth-child(2){animation-delay:.2s}
+    .typing-dot:nth-child(3){animation-delay:.4s}
+    @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}
+    .step-indicator{display:flex;gap:6px;margin-bottom:24px}
+    .step-dot{width:32px;height:6px;border-radius:3px;background:#EBE3D0;transition:.3s}
+    .step-dot.active{background:#C84830}
+    .step-dot.done{background:#4AAE7A}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000}
+    .modal{background:#fff;border-radius:20px;padding:32px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+    .table-header{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9A8A72;padding:10px 16px;background:#FBF6F0;border-bottom:1px solid #EBE3D0}
+    .spinner{width:20px;height:20px;border:2px solid #EBE3D0;border-top-color:#C84830;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .tooltip{position:relative}
+    .tooltip:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1A1208;color:#fff;font-size:12px;padding:5px 10px;border-radius:8px;white-space:nowrap;pointer-events:none;z-index:100}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// CATEGORIES
+// ═══════════════════════════════════════════════
+const CATEGORIES = [
+  {id:'housing',       name:'Housing',         bucket:'needs',   icon:'🏠', color:'#1D3A14'},
+  {id:'groceries',     name:'Groceries',       bucket:'needs',   icon:'🛒', color:'#2D5820'},
+  {id:'utilities',     name:'Utilities',       bucket:'needs',   icon:'⚡', color:'#4A4A9A'},
+  {id:'transport',     name:'Transport',       bucket:'needs',   icon:'🚗', color:'#3A5A9A'},
+  {id:'healthcare',    name:'Healthcare',      bucket:'needs',   icon:'🏥', color:'#6A2A8A'},
+  {id:'dining',        name:'Dining Out',      bucket:'wants',   icon:'🍽️', color:'#C84830'},
+  {id:'kids',          name:'Kids & Family',   bucket:'wants',   icon:'👨‍👩‍👧', color:'#C86020'},
+  {id:'entertainment', name:'Entertainment',   bucket:'wants',   icon:'🎬', color:'#9A4A7A'},
+  {id:'shopping',      name:'Shopping',        bucket:'wants',   icon:'🛍️', color:'#7A4A9A'},
+  {id:'personal',      name:'Personal Care',   bucket:'wants',   icon:'💅', color:'#8A5A6A'},
+  {id:'savings',       name:'Savings',         bucket:'savings', icon:'💰', color:'#D4A030'},
+  {id:'debt',          name:'Debt Payment',    bucket:'savings', icon:'💳', color:'#8A7A30'},
+  {id:'income',        name:'Income',          bucket:'income',  icon:'💵', color:'#1A5A2A'},
+  {id:'transfer',      name:'Transfer',        bucket:'transfer',icon:'🔄', color:'#666'},
+  {id:'other',         name:'Other',           bucket:'other',   icon:'📦', color:'#6A5A42'},
+];
+
+const BUCKET_LABELS = {needs:'Needs',wants:'Wants',savings:'Savings'};
+const BUCKET_COLORS = {needs:'#4AAE7A',wants:'#C84830',savings:'#D4A030'};
+
+// ═══════════════════════════════════════════════
+// SAMPLE DATA
+// ═══════════════════════════════════════════════
+const SAMPLE_ACCOUNTS = [
+  {id:'acc-1', name:'Chase Checking', type:'checking',    institution:'Chase Bank',    lastImport:'2024-06-18'},
+  {id:'acc-2', name:'Chase Freedom Visa', type:'credit_card', institution:'Chase Bank', lastImport:'2024-06-18'},
+];
+
+const SAMPLE_TRANSACTIONS = [
+  // ── MAY 2024 ──
+  {id:'t1', date:'2024-05-01',payee:'Chase Direct Deposit',   amount: 4200,  category:'income',  account:'acc-1',type:'income',  status:'confirmed',notes:'Elena salary'},
+  {id:'t2', date:'2024-05-01',payee:'May Rent - Oakwood Apts',amount:-2200,  category:'housing', account:'acc-1',type:'expense', status:'confirmed',notes:''},
+  {id:'t3', date:'2024-05-01',payee:'Chase Direct Deposit',   amount: 4200,  category:'income',  account:'acc-1',type:'income',  status:'confirmed',notes:'Marco salary'},
+  {id:'t4', date:'2024-05-03',payee:'Whole Foods Market',     amount: -134.52,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t5', date:'2024-05-05',payee:'Shell Gas Station',      amount:  -67.23,category:'transport',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t6', date:'2024-05-06',payee:'Netflix',                amount:  -15.99,category:'entertainment',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t7', date:'2024-05-07',payee:'Starbucks',              amount:   -8.75,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t8', date:'2024-05-09',payee:'Chase Freedom Payment',  amount: -400,  category:'transfer',account:'acc-1',type:'transfer',status:'confirmed',notes:'Credit card payment'},
+  {id:'t9', date:'2024-05-10',payee:"Trader Joe's",           amount:  -98.33,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t10',date:'2024-05-11',payee:'Chipotle Mexican Grill', amount:  -23.45,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t11',date:'2024-05-13',payee:'Amazon',                 amount:  -89.99,category:'shopping',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t12',date:'2024-05-15',payee:'Chase Direct Deposit',   amount: 4200,  category:'income',  account:'acc-1',type:'income',  status:'confirmed',notes:'Elena salary'},
+  {id:'t13',date:'2024-05-15',payee:'ComEd Electric Bill',    amount: -145,  category:'utilities',account:'acc-1',type:'expense',status:'confirmed',notes:''},
+  {id:'t14',date:'2024-05-15',payee:'AT&T Internet',          amount:  -89,  category:'utilities',account:'acc-1',type:'expense',status:'confirmed',notes:''},
+  {id:'t15',date:'2024-05-17',payee:"Trader Joe's",           amount:  -76.22,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t16',date:'2024-05-18',payee:'AYSO Soccer Registration',amount: -120, category:'kids',    account:'acc-2',type:'expense',status:'confirmed',notes:'Spring season'},
+  {id:'t17',date:'2024-05-19',payee:'BP Gas Station',         amount:  -55.43,category:'transport',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t18',date:'2024-05-20',payee:'Olive Garden Restaurant',amount:  -67.80,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:'Family dinner'},
+  {id:'t19',date:'2024-05-22',payee:'Target',                 amount: -134.56,category:'shopping',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t20',date:'2024-05-24',payee:'Costco Wholesale',       amount: -245.67,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:'Monthly bulk shop'},
+  {id:'t21',date:'2024-05-25',payee:'Piano Lesson - Mrs. Kim',amount:  -80,  category:'kids',    account:'acc-1',type:'expense',status:'confirmed',notes:'Sofia weekly lesson'},
+  {id:'t22',date:'2024-05-27',payee:'City of Chicago Water',  amount:  -45,  category:'utilities',account:'acc-1',type:'expense',status:'confirmed',notes:''},
+  {id:'t23',date:'2024-05-28',payee:'The Capital Grille',     amount: -138.90,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:'Anniversary dinner'},
+  {id:'t24',date:'2024-05-29',payee:'Chase Freedom Payment',  amount: -800,  category:'transfer',account:'acc-1',type:'transfer',status:'confirmed',notes:'Credit card payment'},
+  {id:'t25',date:'2024-05-30',payee:'Spotify',                amount:   -9.99,category:'entertainment',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  // ── JUNE 2024 ──
+  {id:'t26',date:'2024-06-01',payee:'Chase Direct Deposit',   amount: 4200,  category:'income',  account:'acc-1',type:'income',  status:'confirmed',notes:'Elena salary'},
+  {id:'t27',date:'2024-06-01',payee:'June Rent - Oakwood Apts',amount:-2200, category:'housing', account:'acc-1',type:'expense',status:'confirmed',notes:''},
+  {id:'t28',date:'2024-06-02',payee:'Whole Foods Market',     amount: -142.33,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t29',date:'2024-06-03',payee:'Starbucks',              amount:   -9.25,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t30',date:'2024-06-04',payee:'Shell Gas Station',      amount:  -58.90,category:'transport',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t31',date:'2024-06-05',payee:'Netflix',                amount:  -15.99,category:'entertainment',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t32',date:'2024-06-06',payee:'Chipotle Mexican Grill', amount:  -22.80,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t33',date:'2024-06-07',payee:'Amazon',                 amount:  -45.67,category:'shopping',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t34',date:'2024-06-08',payee:"Trader Joe's",           amount:  -88.44,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t35',date:'2024-06-10',payee:'AYSO Soccer Practice Fee',amount: -45,  category:'kids',    account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t36',date:'2024-06-11',payee:'Olive Garden Restaurant',amount:  -78.45,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t37',date:'2024-06-12',payee:'BP Gas Station',         amount:  -52.10,category:'transport',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t38',date:'2024-06-13',payee:'Whole Foods Market',     amount: -115.67,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t39',date:'2024-06-14',payee:'Local Bistro',           amount:  -89.20,category:'dining',  account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t40',date:'2024-06-15',payee:'Chase Direct Deposit',   amount: 4200,  category:'income',  account:'acc-1',type:'income',  status:'confirmed',notes:'Elena salary'},
+  {id:'t41',date:'2024-06-15',payee:'ComEd Electric Bill',    amount: -138,  category:'utilities',account:'acc-1',type:'expense',status:'confirmed',notes:''},
+  {id:'t42',date:'2024-06-15',payee:'AT&T Internet',          amount:  -89,  category:'utilities',account:'acc-1',type:'expense',status:'confirmed',notes:''},
+  {id:'t43',date:'2024-06-17',payee:'Piano Lesson - Mrs. Kim',amount:  -80,  category:'kids',    account:'acc-1',type:'expense',status:'confirmed',notes:'Sofia weekly lesson'},
+  {id:'t44',date:'2024-06-18',payee:'Costco Wholesale',       amount: -198.45,category:'groceries',account:'acc-2',type:'expense',status:'confirmed',notes:''},
+  {id:'t45',date:'2024-06-18',payee:'Chase Freedom Payment',  amount: -600,  category:'transfer',account:'acc-1',type:'transfer',status:'confirmed',notes:'Credit card payment'},
+  // A few "pending review" to show the review queue
+  {id:'t46',date:'2024-06-18',payee:'VZWRLSS APLS PAYMNT',   amount:  -85,  category:'other',   account:'acc-2',type:'expense',status:'pending_review',notes:''},
+  {id:'t47',date:'2024-06-17',payee:'SQ *LOCAL MARKET',       amount:  -34.50,category:'other',  account:'acc-2',type:'expense',status:'pending_review',notes:''},
+  {id:'t48',date:'2024-06-16',payee:'PAYPAL *TRANSFER',       amount: -150,  category:'other',   account:'acc-1',type:'expense',status:'pending_review',notes:''},
+];
+
+const SAMPLE_BUDGET = {
+  housing:2200, groceries:600, utilities:350, transport:400,
+  healthcare:200, dining:600, kids:500, entertainment:100,
+  shopping:300, personal:100, savings:500, debt:0
+};
+
+const SAMPLE_GOALS = [
+  {id:'g1',name:'Vacation Fund',target:5000,saved:3240,monthlyContrib:420,targetDate:'2024-12-01'},
+  {id:'g2',name:'Emergency Fund',target:15000,saved:8500,monthlyContrib:300,targetDate:'2025-06-01'},
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+function loadState(){
+  try{ return JSON.parse(localStorage.getItem('fba_state'))||null; }
+  catch(e){ return null; }
+}
+function saveState(){
+  try{ localStorage.setItem('fba_state',JSON.stringify(S)); }
+  catch(e){ console.warn('State save failed',e); }
+}
+function getGeminiKey(){ return localStorage.getItem('fba_gemini_key')||''; }
+function setGeminiKey(k){ localStorage.setItem('fba_gemini_key',k); }
+
+let S = loadState() || {
+  user: null,
+  household: null,
+  accounts: [],
+  transactions: [],
+  budget: {},
+  goals: [],
+  chatHistory: [],
+  onboardingDone: false,
+};
+
+function setState(patch){
+  Object.assign(S, patch);
+  saveState();
+}
+
+// ═══════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════
+const fmt = {
+  currency: v => {
+    const abs = Math.abs(v);
+    const s = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(abs);
+    return v < 0 ? `-${s}` : s;
+  },
+  currencyAbs: v => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Math.abs(v)),
+  date: d => new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+  dateShort: d => new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+  monthYear: (y,m) => new Date(y,m-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'}),
+  pct: v => Math.round(v)+'%',
+};
+
+function cat(id){ return CATEGORIES.find(c=>c.id===id)||{id:'other',name:'Other',icon:'📦',color:'#666'}; }
+function catBadge(id){
+  const c = cat(id);
+  return `<span class="badge badge-${id}">${c.icon} ${c.name}</span>`;
+}
+function uid(){ return 't'+(Date.now()).toString(36)+Math.random().toString(36).slice(2,6); }
+
+function txnsByMonth(txns, y, m){
+  return txns.filter(t=>{
+    const d=new Date(t.date+'T00:00:00');
+    return d.getFullYear()===y && d.getMonth()===m-1;
+  });
+}
+function sumExpenses(txns){ return txns.filter(t=>t.type==='expense').reduce((s,t)=>s+Math.abs(t.amount),0); }
+function sumIncome(txns){   return txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0); }
+function spendByCat(txns, catId){ return txns.filter(t=>t.type==='expense'&&t.category===catId).reduce((s,t)=>s+Math.abs(t.amount),0); }
+
+// Current period
+const NOW = new Date();
+const CUR_Y = 2024, CUR_M = 6; // demo date pinned to June 2024
+const CUR_DAY = 18; // 18 days into June for demo
+const DAYS_IN_MONTH = 30;
+const MONTH_PCT = Math.round((CUR_DAY/DAYS_IN_MONTH)*100);
+
+// ═══════════════════════════════════════════════
+// DATA QUERY FUNCTIONS (for AI tools)
+// ═══════════════════════════════════════════════
+function toolGetSpendingSummary({period, category_name}){
+  const txns = S.transactions;
+  let filtered = [];
+  if(period==='current_month')      filtered = txnsByMonth(txns,CUR_Y,CUR_M);
+  else if(period==='last_month')    filtered = txnsByMonth(txns,CUR_Y,CUR_M-1);
+  else if(period==='last_3_months') filtered = txns.filter(t=>new Date(t.date+'T00:00:00')>=new Date(2024,2,1));
+  else                              filtered = txns;
+
+  const expenses = filtered.filter(t=>t.type==='expense');
+  if(category_name){
+    const c = CATEGORIES.find(c=>c.name.toLowerCase().includes(category_name.toLowerCase()));
+    if(c){
+      const amt = spendByCat(expenses, c.id);
+      return {category:c.name, total:amt.toFixed(2), transactions_count:expenses.filter(t=>t.category===c.id).length};
+    }
+    return {error:'Category not found: '+category_name};
+  }
+  const bycat = {};
+  CATEGORIES.filter(c=>c.bucket!=='income'&&c.bucket!=='transfer').forEach(c=>{
+    const amt = spendByCat(expenses, c.id);
+    if(amt>0) bycat[c.name] = amt.toFixed(2);
+  });
+  return {period, total_expenses:sumExpenses(expenses).toFixed(2), total_income:sumIncome(filtered).toFixed(2), by_category:bycat};
+}
+
+function toolGetBudgetStatus({period}){
+  const txns = period==='last_month' ? txnsByMonth(S.transactions,CUR_Y,CUR_M-1) : txnsByMonth(S.transactions,CUR_Y,CUR_M);
+  const result = [];
+  const bud = S.budget;
+  Object.keys(bud).forEach(catId=>{
+    if(!bud[catId]) return;
+    const spent = spendByCat(txns.filter(t=>t.type==='expense'), catId);
+    const limit = bud[catId];
+    const pct = limit>0 ? Math.round((spent/limit)*100) : 0;
+    result.push({category:cat(catId).name, budget:limit, spent:spent.toFixed(2), percent_used:pct, status:pct>100?'OVER_BUDGET':pct>80?'APPROACHING':'ON_TRACK'});
+  });
+  return {period, days_elapsed:CUR_DAY, days_in_month:DAYS_IN_MONTH, categories:result};
+}
+
+function toolGetCashFlow({months}){
+  const n = Math.min(months||6,6);
+  const result = [];
+  for(let i=n-1;i>=0;i--){
+    let y=CUR_Y, m=CUR_M-i;
+    if(m<=0){m+=12;y--;}
+    const txns = txnsByMonth(S.transactions,y,m);
+    const inc = sumIncome(txns), exp = sumExpenses(txns);
+    result.push({month:new Date(y,m-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'}), income:inc.toFixed(2), expenses:exp.toFixed(2), net:(inc-exp).toFixed(2)});
+  }
+  return {months:result};
+}
+
+function toolGetGoalProgress({goal_name}){
+  const goals = S.goals;
+  if(goal_name){
+    const g = goals.find(g=>g.name.toLowerCase().includes(goal_name.toLowerCase()));
+    if(!g) return {error:'Goal not found'};
+    const remaining = g.target-g.saved;
+    const months_to_go = remaining>0 ? Math.ceil(remaining/g.monthlyContrib) : 0;
+    return {...g, remaining:remaining.toFixed(2), months_to_complete:months_to_go, on_track:months_to_go<=6};
+  }
+  return {goals:goals.map(g=>({name:g.name,target:g.target,saved:g.saved,percent:Math.round((g.saved/g.target)*100),monthly_contribution:g.monthlyContrib}))};
+}
+
+function toolGetTransactions({start_date,end_date,category_name,limit}){
+  let txns = S.transactions.filter(t=>t.type==='expense');
+  if(start_date) txns=txns.filter(t=>t.date>=start_date);
+  if(end_date)   txns=txns.filter(t=>t.date<=end_date);
+  if(category_name){
+    const c=CATEGORIES.find(c=>c.name.toLowerCase().includes(category_name.toLowerCase()));
+    if(c) txns=txns.filter(t=>t.category===c.id);
+  }
+  txns.sort((a,b)=>b.date.localeCompare(a.date));
+  const top = txns.slice(0,Math.min(limit||10,20));
+  return {count:top.length, transactions:top.map(t=>({date:t.date,payee:t.payee,amount:(-Math.abs(t.amount)).toFixed(2),category:cat(t.category).name}))};
+}
+
+const AI_TOOLS = [{
+  functionDeclarations:[
+    {name:'get_spending_summary',description:'Returns total spending by category for a time period',
+     parameters:{type:'OBJECT',properties:{
+       period:{type:'STRING',enum:['current_month','last_month','last_3_months','all_time'],description:'Time period to query'},
+       category_name:{type:'STRING',description:'Optional: specific category name to filter by'}
+     },required:['period']}},
+    {name:'get_budget_status',description:'Returns budget limit vs actual spending for all categories',
+     parameters:{type:'OBJECT',properties:{
+       period:{type:'STRING',enum:['current_month','last_month'],description:'Budget period'}
+     },required:['period']}},
+    {name:'get_cash_flow',description:'Returns monthly income vs expenses trend over N months',
+     parameters:{type:'OBJECT',properties:{
+       months:{type:'NUMBER',description:'Number of months to look back (max 6)'}
+     },required:[]}},
+    {name:'get_goal_progress',description:'Returns savings goal progress',
+     parameters:{type:'OBJECT',properties:{
+       goal_name:{type:'STRING',description:'Optional: name of specific goal'}
+     },required:[]}},
+    {name:'get_transactions',description:'Returns filtered list of recent transactions',
+     parameters:{type:'OBJECT',properties:{
+       start_date:{type:'STRING',description:'Start date YYYY-MM-DD'},
+       end_date:{type:'STRING',description:'End date YYYY-MM-DD'},
+       category_name:{type:'STRING',description:'Filter by category name'},
+       limit:{type:'NUMBER',description:'Max results (default 10)'}
+     },required:[]}}
+  ]
+}];
+
+function executeTool(name, args){
+  const map = {
+    get_spending_summary: toolGetSpendingSummary,
+    get_budget_status:    toolGetBudgetStatus,
+    get_cash_flow:        toolGetCashFlow,
+    get_goal_progress:    toolGetGoalProgress,
+    get_transactions:     toolGetTransactions,
+  };
+  const fn = map[name];
+  if(!fn) return {error:'Unknown tool: '+name};
+  try{ return fn(args||{}); }
+  catch(e){ return {error:e.message}; }
+}
+
+// ═══════════════════════════════════════════════
+// GEMINI INTEGRATION
+// ═══════════════════════════════════════════════
+const SYSTEM_PROMPT = () => `You are a friendly budget assistant for the ${S.household?.name||'household'} family.
+Today is June 18, 2024. The current budget period is June 2024 (18 days elapsed of 30).
+Members: ${(S.household?.members||[]).join(', ')}.
+Always use a tool to answer financial questions — never invent numbers.
+Keep answers concise (2–4 sentences) and in plain English, like explaining to a friend.
+Be warm, friendly, and encouraging. Use the family's actual data.
+This is not financial advice — you are summarising their own data.`;
+
+async function callGemini(contents){
+  const key = getGeminiKey();
+  if(!key) throw new Error('NO_KEY');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+  const res = await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      contents,
+      tools: AI_TOOLS,
+      systemInstruction:{parts:[{text:SYSTEM_PROMPT()}]},
+      generationConfig:{temperature:.7,maxOutputTokens:600}
+    })
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err?.error?.message||`API error ${res.status}`);
+  }
+  return res.json();
+}
+
+async function chat(userMessage){
+  const history = S.chatHistory.slice(-8).map(m=>({
+    role: m.role==='user'?'user':'model',
+    parts:[{text:m.text}]
+  }));
+  const newMsg = {role:'user',parts:[{text:userMessage}]};
+  let contents = [...history, newMsg];
+  let data = await callGemini(contents);
+  let candidate = data?.candidates?.[0];
+  if(!candidate) throw new Error('No response from Gemini');
+  let part = candidate.content?.parts?.[0];
+
+  // Handle function calling (up to 3 rounds)
+  for(let i=0;i<3;i++){
+    if(!part?.functionCall) break;
+    const fnName = part.functionCall.name;
+    const fnArgs = part.functionCall.args||{};
+    const fnResult = executeTool(fnName, fnArgs);
+    contents = [...contents,
+      {role:'model',parts:[{functionCall:{name:fnName,args:fnArgs}}]},
+      {role:'user', parts:[{functionResponse:{name:fnName,response:fnResult}}]}
+    ];
+    data = await callGemini(contents);
+    candidate = data?.candidates?.[0];
+    part = candidate?.content?.parts?.[0];
+  }
+  return part?.text || 'I couldn\'t generate a response. Please try again.';
+}
+
+// ═══════════════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════════════
+let currentView = 'dashboard';
+let chartInstances = {};
+
+function navigate(view){
+  currentView = view;
+  Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  chartInstances = {};
+  render();
+  window.scrollTo(0,0);
+}
+
+// Safe innerHTML helper — runs DOMPurify when available.
+// All user-supplied strings in templates are already passed through escapeHtml()
+// at their origin; this is a defence-in-depth belt-and-suspenders check.
+function safeSetHTML(el, html){
+  if(typeof DOMPurify !== 'undefined'){
+    el.innerHTML = DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: DOMPurify.Config ? undefined : null, // use default broad allowlist for app UI
+      FORCE_BODY: false
+    });
+  } else {
+    el.innerHTML = html; // DOMPurify CDN not yet loaded; strings are already escapeHtml'd
+  }
+}
+
+function render(){
+  const root = document.getElementById('root');
+  if(!S.user){ safeSetHTML(root, renderAuth()); attachAuthEvents(); return; }
+  if(!getGeminiKey()){ safeSetHTML(root, renderApiSetup()); attachApiSetupEvents(); return; }
+  if(!S.onboardingDone){ safeSetHTML(root, renderOnboarding()); attachOnboardingEvents(); return; }
+
+  const views = {dashboard:renderDashboard,transactions:renderTransactions,import:renderImport,budget:renderBudget,chat:renderChat};
+  const viewFn = views[currentView]||renderDashboard;
+  safeSetHTML(root, renderShell(viewFn()));
+  attachNavEvents();
+
+  if(currentView==='dashboard')     { initDashboardCharts(); attachDashboardEvents(); }
+  if(currentView==='transactions')  { attachTransactionEvents(); }
+  if(currentView==='import')        { attachImportEvents(); }
+  if(currentView==='budget')        { attachBudgetEvents(); }
+  if(currentView==='chat')          { attachChatEvents(); scrollChatToBottom(); }
+}
+
+// ═══════════════════════════════════════════════
+// VIEW: AUTH
+// ═══════════════════════════════════════════════
+let authMode = 'login';
+function renderAuth(){
+  return `
+  <div class="min-h-screen flex items-stretch">
+    <div class="hidden lg:flex flex-col justify-center bg-coral text-white w-[48%] p-16 relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-80 h-80 rounded-full border border-white/10 -translate-y-1/3 translate-x-1/3"></div>
+      <div class="absolute bottom-0 left-0 w-60 h-60 rounded-full border border-white/10 translate-y-1/3 -translate-x-1/3"></div>
+      <div class="relative z-10">
+        <div class="fredoka text-4xl font-bold mb-2">☀️ FamilyBudget</div>
+        <div class="text-white/70 text-lg mb-12">Your household finances, honestly.</div>
+        <div class="space-y-5">
+          ${[['👨‍👩‍👧','Built for families, not just one person'],
+             ['🔒','No bank login — upload your CSV file'],
+             ['✨','Ask your AI assistant anything about your money']].map(([e,t])=>`
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-xl flex-shrink-0">${e}</div>
+            <span class="text-white/85 font-medium">${t}</span>
+          </div>`).join('')}
+        </div>
+        <div class="mt-12 p-4 bg-white/10 rounded-2xl">
+          <div class="text-sm font-bold text-white/60 uppercase tracking-wider mb-2">Trusted by families after Mint closed</div>
+          <div class="fredoka text-3xl font-bold">48,000+</div>
+          <div class="text-white/70">households tracking their budget</div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-1 flex items-center justify-center p-8 bg-cream">
+      <div class="w-full max-w-md">
+        <div class="text-center mb-8 lg:hidden">
+          <div class="fredoka text-3xl font-bold text-coral">☀️ FamilyBudget</div>
+        </div>
+        <div class="card p-8">
+          <div class="flex gap-2 mb-8 p-1 bg-cream rounded-xl">
+            <button id="tab-login" onclick="authMode='login';render()" class="flex-1 py-2 rounded-lg text-sm font-700 transition-all ${authMode==='login'?'bg-white shadow text-coral font-bold':'text-ink/60'}">Sign In</button>
+            <button id="tab-signup" onclick="authMode='signup';render()" class="flex-1 py-2 rounded-lg text-sm font-700 transition-all ${authMode==='signup'?'bg-white shadow text-coral font-bold':'text-ink/60'}">Sign Up</button>
+          </div>
+          ${authMode==='login'?`
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Email address</label>
+              <input id="login-email" type="email" class="input" placeholder="elena@example.com" value="elena@martinez.com">
+            </div>
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Password</label>
+              <input id="login-pass" type="password" class="input" placeholder="••••••••" value="password123">
+            </div>
+            <button id="login-btn" class="btn-primary w-full mt-2">Sign In →</button>
+            <div class="text-center text-sm text-ink/50 mt-3">Demo: any email + password works ✨</div>
+          </div>`:``}
+          ${authMode==='signup'?`
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-700 text-ink/70 mb-1.5">First name</label>
+                <input id="signup-fname" type="text" class="input" placeholder="Elena">
+              </div>
+              <div>
+                <label class="block text-sm font-700 text-ink/70 mb-1.5">Last name</label>
+                <input id="signup-lname" type="text" class="input" placeholder="Martinez">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Email address</label>
+              <input id="signup-email" type="email" class="input" placeholder="elena@example.com">
+            </div>
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Password</label>
+              <input id="signup-pass" type="password" class="input" placeholder="Create a password">
+            </div>
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Household name</label>
+              <input id="signup-household" type="text" class="input" placeholder="The Martinez Family">
+            </div>
+            <button id="signup-btn" class="btn-primary w-full mt-2">Create Account →</button>
+          </div>`:``}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function attachAuthEvents(){
+  const loginBtn = document.getElementById('login-btn');
+  const signupBtn = document.getElementById('signup-btn');
+  if(loginBtn) loginBtn.onclick = ()=>{
+    const email = document.getElementById('login-email').value||'elena@martinez.com';
+    const name = email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    setState({user:{name,email},household:{name:'The Martinez Family',members:['Elena','Marco']},accounts:SAMPLE_ACCOUNTS,transactions:SAMPLE_TRANSACTIONS,budget:SAMPLE_BUDGET,goals:SAMPLE_GOALS,onboardingDone:true,chatHistory:[]});
+    render();
+  };
+  if(signupBtn) signupBtn.onclick = ()=>{
+    const fname = document.getElementById('signup-fname').value||'Elena';
+    const lname = document.getElementById('signup-lname').value||'Martinez';
+    const hname = document.getElementById('signup-household').value||`The ${lname} Family`;
+    const email = document.getElementById('signup-email').value||'user@example.com';
+    setState({user:{name:`${fname} ${lname}`,email},household:{name:hname,members:[fname]},accounts:[],transactions:[],budget:{...SAMPLE_BUDGET},goals:[...SAMPLE_GOALS],onboardingDone:false,chatHistory:[]});
+    render();
+  };
+}
+
+// ═══════════════════════════════════════════════
+// VIEW: API SETUP
+// ═══════════════════════════════════════════════
+function renderApiSetup(){
+  return `
+  <div class="min-h-screen flex items-center justify-center p-8 bg-cream">
+    <div class="modal max-w-lg w-full">
+      <div class="text-4xl mb-4">🤖</div>
+      <div class="fredoka text-2xl font-bold mb-2">Connect your AI Assistant</div>
+      <p class="text-ink/60 mb-6">Add your Gemini API key to enable the AI budget assistant. Your key is stored only in this browser — never sent to our servers.</p>
+      <div class="bg-cream p-4 rounded-xl mb-6 text-sm">
+        <div class="font-bold text-ink/70 mb-1">Get a free Gemini API key:</div>
+        <div class="text-ink/60">Visit <span class="text-coral font-bold">aistudio.google.com</span> → Get API Key → Create API Key</div>
+      </div>
+      <label class="block text-sm font-700 text-ink/70 mb-1.5">Gemini API Key</label>
+      <input id="api-key-input" type="password" class="input mb-4" placeholder="AIzaSy...">
+      <div id="api-key-error" class="text-coral text-sm mb-3 hidden"></div>
+      <button id="save-key-btn" class="btn-primary w-full">Connect AI Assistant →</button>
+      <button id="skip-key-btn" class="btn-ghost w-full mt-3">Skip for now (demo mode)</button>
+    </div>
+  </div>`;
+}
+function attachApiSetupEvents(){
+  document.getElementById('save-key-btn').onclick = async ()=>{
+    const k = document.getElementById('api-key-input').value.trim();
+    const errEl = document.getElementById('api-key-error');
+    if(!k){ errEl.textContent='Please enter a key.'; errEl.classList.remove('hidden'); return; }
+    errEl.classList.add('hidden');
+    document.getElementById('save-key-btn').innerHTML='<span class="spinner"></span> Verifying...';
+    setGeminiKey(k);
+    // quick test
+    try{
+      await callGemini([{role:'user',parts:[{text:'Say "OK" in one word.'}]}]);
+      render();
+    } catch(e){
+      setGeminiKey('');
+      errEl.textContent = 'Key invalid or error: '+e.message;
+      errEl.classList.remove('hidden');
+      document.getElementById('save-key-btn').textContent='Connect AI Assistant →';
+    }
+  };
+  document.getElementById('skip-key-btn').onclick = ()=>{
+    setGeminiKey('DEMO_MODE');
+    render();
+  };
+}
+
+// ═══════════════════════════════════════════════
+// VIEW: ONBOARDING
+// ═══════════════════════════════════════════════
+let onboardStep = 0;
+function renderOnboarding(){
+  const steps = ['Your Household','Add Account','Import Data'];
+  return `
+  <div class="min-h-screen bg-cream flex items-center justify-center p-8">
+    <div class="w-full max-w-lg">
+      <div class="text-center mb-8">
+        <div class="fredoka text-3xl font-bold text-coral mb-1">☀️ FamilyBudget</div>
+        <div class="text-ink/60">Let's get your household set up</div>
+      </div>
+      <div class="step-indicator justify-center mb-8">
+        ${steps.map((_,i)=>`<div class="step-dot flex-1 ${i<onboardStep?'done':i===onboardStep?'active':''}"></div>`).join('')}
+      </div>
+      <div class="card p-8 view">
+        ${onboardStep===0?`
+          <div class="fredoka text-2xl font-bold mb-1">Welcome, ${escapeHtml(S.user?.name?.split(' ')[0]||'')}! 👋</div>
+          <p class="text-ink/60 mb-6">Tell us about your household so we can personalise your budget.</p>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Household name</label>
+              <input id="ob-hname" type="text" class="input" value="${escapeHtml(S.household?.name||'')}">
+            </div>
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Partner's name (optional)</label>
+              <input id="ob-partner" type="text" class="input" placeholder="e.g. Marco">
+            </div>
+            <button id="ob-next-0" class="btn-primary w-full mt-2">Next: Add a Bank Account →</button>
+          </div>
+        `:onboardStep===1?`
+          <div class="fredoka text-2xl font-bold mb-1">Add your first account 🏦</div>
+          <p class="text-ink/60 mb-6">We'll use this to organise your transactions. You can add more later.</p>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Account nickname</label>
+              <input id="ob-accname" type="text" class="input" placeholder="Chase Checking">
+            </div>
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Account type</label>
+              <select id="ob-acctype" class="select">
+                <option value="checking">Checking</option>
+                <option value="savings">Savings</option>
+                <option value="credit_card">Credit Card</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-700 text-ink/70 mb-1.5">Institution</label>
+              <input id="ob-institution" type="text" class="input" placeholder="Chase Bank">
+            </div>
+            <button id="ob-next-1" class="btn-primary w-full mt-2">Next: Import Transactions →</button>
+            <button onclick="onboardStep=0;render()" class="btn-ghost w-full">← Back</button>
+          </div>
+        `:onboardStep===2?`
+          <div class="fredoka text-2xl font-bold mb-1">Import your statements 📁</div>
+          <p class="text-ink/60 mb-6">Download a CSV from your bank and upload it here — no bank login needed.</p>
+          <div class="bg-sage/10 border border-sage/30 rounded-xl p-4 mb-6 text-sm text-ink/70">
+            <div class="font-bold mb-1">💡 To get your CSV:</div>
+            <div>Log into your bank → Accounts → Download/Export → Choose CSV → Select date range</div>
+          </div>
+          <div class="dropzone p-8 text-center mb-4" id="ob-dropzone">
+            <div class="text-4xl mb-3">📂</div>
+            <div class="fredoka text-lg font-bold mb-1">Drop your CSV here</div>
+            <div class="text-sm text-ink/60 mb-4">or click to browse</div>
+            <input type="file" id="ob-file" accept=".csv,.ofx,.qfx" class="hidden">
+            <button onclick="document.getElementById('ob-file').click()" class="btn-secondary">Choose File</button>
+          </div>
+          <button id="ob-skip" class="btn-ghost w-full mb-2">Use sample data for demo</button>
+          <button onclick="onboardStep=1;render()" class="btn-ghost w-full">← Back</button>
+        `:''}
+      </div>
+    </div>
+  </div>`;
+}
+function attachOnboardingEvents(){
+  if(onboardStep===0){
+    document.getElementById('ob-next-0').onclick=()=>{
+      const hname = document.getElementById('ob-hname').value;
+      const partner = document.getElementById('ob-partner').value;
+      const members = [S.user.name.split(' ')[0]];
+      if(partner) members.push(partner);
+      setState({household:{...S.household,name:hname,members}});
+      onboardStep=1; render();
+    };
+  }
+  if(onboardStep===1){
+    document.getElementById('ob-next-1').onclick=()=>{
+      const acc = {id:'acc-'+Date.now(),name:document.getElementById('ob-accname').value||'My Account',type:document.getElementById('ob-acctype').value,institution:document.getElementById('ob-institution').value||'My Bank',lastImport:null};
+      setState({accounts:[...S.accounts,acc]});
+      onboardStep=2; render();
+    };
+  }
+  if(onboardStep===2){
+    document.getElementById('ob-skip').onclick=()=>{
+      setState({transactions:SAMPLE_TRANSACTIONS,accounts:SAMPLE_ACCOUNTS,onboardingDone:true,budget:SAMPLE_BUDGET,goals:SAMPLE_GOALS});
+      onboardStep=0; render();
+    };
+    const fileIn = document.getElementById('ob-file');
+    fileIn.onchange = e=>{
+      if(!e.target.files[0]) return;
+      handleCsvFile(e.target.files[0], null, ()=>{
+        setState({onboardingDone:true}); onboardStep=0; render();
+      });
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════
+// SHELL / NAV
+// ═══════════════════════════════════════════════
+function renderShell(content){
+  const navItems = [
+    {id:'dashboard', icon:'📊', label:'Dashboard'},
+    {id:'transactions',icon:'📋',label:'Transactions'},
+    {id:'import',    icon:'📁', label:'Import'},
+    {id:'budget',    icon:'🎯', label:'Budget'},
+    {id:'chat',      icon:'✨', label:'AI Chat'},
+  ];
+  const pendingCount = S.transactions.filter(t=>t.status==='pending_review').length;
+  return `
+  <div class="flex flex-col min-h-screen">
+    <header class="sticky top-0 z-50 bg-white border-b border-cream-dark/60 px-6 py-3">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="fredoka text-xl font-bold text-coral flex items-center gap-2 cursor-pointer" onclick="navigate('dashboard')">
+          ☀️ FamilyBudget
+        </div>
+        <nav class="flex items-center gap-1">
+          ${navItems.map(n=>`
+          <button onclick="navigate('${n.id}')" class="nav-link ${currentView===n.id?'active':''}" title="${n.label}">
+            <span>${n.icon}</span>
+            <span class="hidden sm:inline">${n.label}</span>
+            ${n.id==='transactions'&&pendingCount>0?`<span class="bg-coral text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">${pendingCount}</span>`:''}
+          </button>`).join('')}
+        </nav>
+        <div class="flex items-center gap-3">
+          <div class="text-sm font-600 text-ink/60 hidden sm:block">${escapeHtml(S.household?.name||'')}</div>
+          <div class="w-9 h-9 rounded-full bg-coral text-white flex items-center justify-center font-bold text-sm fredoka cursor-pointer" title="${escapeHtml(S.user?.name||'')}">${escapeHtml((S.user?.name||'U')[0].toUpperCase())}</div>
+        </div>
+      </div>
+    </header>
+    <main class="flex-1 max-w-7xl mx-auto w-full p-6">
+      <div class="view">${content}</div>
+    </main>
+  </div>`;
+}
+function attachNavEvents(){} // nav uses inline onclick
+
+// ═══════════════════════════════════════════════
+// VIEW: DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard(){
+  const curTxns = txnsByMonth(S.transactions, CUR_Y, CUR_M);
+  const prevTxns= txnsByMonth(S.transactions, CUR_Y, CUR_M-1);
+  const income  = sumIncome(curTxns);
+  const expenses= sumExpenses(curTxns.filter(t=>t.type==='expense'));
+  const prevExp = sumExpenses(prevTxns.filter(t=>t.type==='expense'));
+  const net = income - expenses;
+  const bud = S.budget;
+
+  const pacingCats = CATEGORIES.filter(c=>c.bucket!=='income'&&c.bucket!=='transfer'&&c.bucket!=='other'&&bud[c.id]>0);
+  const recent = [...S.transactions].filter(t=>t.type!=='transfer').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  const pendingCount = S.transactions.filter(t=>t.status==='pending_review').length;
+
+  return `
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="fredoka text-2xl font-bold">Good morning, ${escapeHtml(S.user?.name?.split(' ')[0]||'')}! 👋</div>
+        <div class="text-ink/60 text-sm mt-0.5">Here's your ${fmt.monthYear(CUR_Y,CUR_M)} summary · ${CUR_DAY} of ${DAYS_IN_MONTH} days</div>
+      </div>
+      <div class="flex gap-2">
+        ${pendingCount>0?`<button onclick="navigate('transactions')" class="btn-secondary text-sm py-2 px-3">🔔 ${pendingCount} to review</button>`:''}
+        <button onclick="navigate('import')" class="btn-primary text-sm py-2 px-4">+ Import</button>
+      </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="grid grid-cols-3 gap-4">
+      <div class="card text-center">
+        <div class="text-sm font-700 text-ink/50 uppercase tracking-wide mb-1">Income</div>
+        <div class="fredoka text-3xl font-bold text-sage">${fmt.currencyAbs(income)}</div>
+        <div class="text-xs text-ink/40 mt-1">This month</div>
+      </div>
+      <div class="card text-center">
+        <div class="text-sm font-700 text-ink/50 uppercase tracking-wide mb-1">Expenses</div>
+        <div class="fredoka text-3xl font-bold text-coral">${fmt.currencyAbs(expenses)}</div>
+        <div class="text-xs text-ink/40 mt-1">${expenses>prevExp?'↑':'↓'} vs last month</div>
+      </div>
+      <div class="card text-center">
+        <div class="text-sm font-700 text-ink/50 uppercase tracking-wide mb-1">Net Saved</div>
+        <div class="fredoka text-3xl font-bold ${net>=0?'text-sage':'text-coral'}">${net>=0?'+':''}${fmt.currencyAbs(net)}</div>
+        <div class="text-xs text-ink/40 mt-1">${net>=0?'Ahead of expenses 🎉':'Behind this month'}</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-5 gap-5">
+      <!-- Budget Pacing (left 3/5) -->
+      <div class="col-span-3 card">
+        <div class="flex items-center justify-between mb-4">
+          <div class="fredoka text-lg font-bold">Budget Pacing</div>
+          <div class="text-xs font-700 text-ink/50 bg-cream px-2.5 py-1 rounded-full">${MONTH_PCT}% of month elapsed</div>
+        </div>
+        <div class="space-y-3">
+          ${pacingCats.map(c=>{
+            const spent = spendByCat(curTxns.filter(t=>t.type==='expense'), c.id);
+            const limit = bud[c.id]||0;
+            const pct = limit>0?Math.round((spent/limit)*100):0;
+            const status = pct>100?'status-over':pct>80?'status-warn':'status-ok';
+            const isOver = pct>100;
+            return `
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-2 text-sm font-600">
+                  <span>${c.icon}</span><span>${c.name}</span>
+                  ${isOver?'<span class="text-coral text-xs font-800">⚠️ Over</span>':''}
+                </div>
+                <div class="text-sm font-700 ${isOver?'text-coral':'text-ink/60'}">${fmt.currencyAbs(spent)} <span class="text-ink/40 font-500">/ ${fmt.currencyAbs(limit)}</span></div>
+              </div>
+              <div class="pacing-track">
+                <div class="pacing-fill ${status}" style="width:${Math.min(pct,100)}%"></div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <button onclick="navigate('budget')" class="btn-ghost w-full mt-4 text-sm">Adjust budget limits →</button>
+      </div>
+
+      <!-- Right sidebar: Chart + Goals -->
+      <div class="col-span-2 space-y-5">
+        <!-- Cash flow chart -->
+        <div class="card">
+          <div class="fredoka text-lg font-bold mb-3">6-Month Cash Flow</div>
+          <canvas id="cashflow-chart" height="160"></canvas>
+        </div>
+        <!-- Goals -->
+        <div class="card">
+          <div class="fredoka text-lg font-bold mb-3">Savings Goals 🎯</div>
+          <div class="space-y-3">
+            ${(S.goals||[]).map(g=>{
+              const pct=Math.round((g.saved/g.target)*100);
+              return `<div>
+                <div class="flex justify-between text-sm mb-1"><span class="font-600">${escapeHtml(g.name)}</span><span class="font-700 text-sage">${pct}%</span></div>
+                <div class="pacing-track"><div class="pacing-fill status-ok" style="width:${pct}%"></div></div>
+                <div class="text-xs text-ink/50 mt-1">${fmt.currencyAbs(g.saved)} of ${fmt.currencyAbs(g.target)}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          <button onclick="navigate('chat')" class="btn-ghost w-full mt-3 text-sm">✨ Ask AI about goals →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <div class="fredoka text-lg font-bold">Recent Transactions</div>
+        <button onclick="navigate('transactions')" class="text-coral text-sm font-700">View all →</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="table-header"><td>Date</td><td>Description</td><td>Category</td><td class="text-right">Amount</td></tr></thead>
+          <tbody>
+            ${recent.map(t=>`
+            <tr class="txn-row border-b border-cream-dark/40 cursor-pointer" onclick="navigate('transactions')">
+              <td class="py-3 px-4 text-ink/60 whitespace-nowrap">${fmt.dateShort(t.date)}</td>
+              <td class="py-3 px-4 font-500">${escapeHtml(t.payee)}</td>
+              <td class="py-3 px-4">${catBadge(t.category)}</td>
+              <td class="py-3 px-4 text-right font-700 ${t.amount<0?'text-coral':'text-sage'}">${fmt.currency(t.amount)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI CTA -->
+    <div class="bg-gradient-to-r from-coral to-coral-dark rounded-2xl p-6 text-white flex items-center justify-between">
+      <div>
+        <div class="fredoka text-xl font-bold mb-1">✨ Ask your AI assistant</div>
+        <div class="text-white/80 text-sm">"Why did we overspend on dining?" · "Are we on track for vacation?"</div>
+      </div>
+      <button onclick="navigate('chat')" class="bg-white text-coral fredoka text-base font-bold px-6 py-3 rounded-xl hover:bg-cream transition">Chat now →</button>
+    </div>
+  </div>`;
+}
+function initDashboardCharts(){
+  const canvas = document.getElementById('cashflow-chart');
+  if(!canvas) return;
+  const months=[], incomes=[], exps=[];
+  for(let i=5;i>=0;i--){
+    let y=CUR_Y,m=CUR_M-i; if(m<=0){m+=12;y--;}
+    const txns=txnsByMonth(S.transactions,y,m);
+    months.push(new Date(y,m-1,1).toLocaleDateString('en-US',{month:'short'}));
+    incomes.push(parseFloat(sumIncome(txns).toFixed(2)));
+    exps.push(parseFloat(sumExpenses(txns.filter(t=>t.type==='expense')).toFixed(2)));
+  }
+  const ctx=canvas.getContext('2d');
+  chartInstances['cashflow'] = new Chart(ctx,{
+    type:'bar',
+    data:{labels:months,datasets:[
+      {label:'Income', data:incomes, backgroundColor:'#4AAE7A', borderRadius:4},
+      {label:'Expenses',data:exps, backgroundColor:'#C84830', borderRadius:4}
+    ]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#EBE3D0'},ticks:{callback:v=>'$'+v.toLocaleString()}}}}
+  });
+}
+function attachDashboardEvents(){}
+
+// ═══════════════════════════════════════════════
+// VIEW: TRANSACTIONS
+// ═══════════════════════════════════════════════
+let txnFilter = {search:'',category:'',status:'all'};
+let txnSelected = new Set();
+
+function renderTransactions(){
+  let txns = [...S.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+  if(txnFilter.search) txns=txns.filter(t=>t.payee.toLowerCase().includes(txnFilter.search.toLowerCase()));
+  if(txnFilter.category) txns=txns.filter(t=>t.category===txnFilter.category);
+  if(txnFilter.status==='pending') txns=txns.filter(t=>t.status==='pending_review');
+  else if(txnFilter.status==='confirmed') txns=txns.filter(t=>t.status==='confirmed');
+  const pendingCount = S.transactions.filter(t=>t.status==='pending_review').length;
+
+  return `
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <div class="fredoka text-2xl font-bold">Transactions</div>
+      <button onclick="navigate('import')" class="btn-primary text-sm py-2 px-4">+ Import CSV</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card p-4 flex flex-wrap gap-3 items-center">
+      <input id="txn-search" type="text" class="input flex-1 min-w-48" placeholder="🔍  Search payee..." value="${txnFilter.search}" oninput="txnFilter.search=this.value;render()">
+      <select id="txn-cat" class="select w-44" onchange="txnFilter.category=this.value;render()">
+        <option value="">All categories</option>
+        ${CATEGORIES.map(c=>`<option value="${c.id}" ${txnFilter.category===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}
+      </select>
+      <div class="flex gap-1 bg-cream rounded-xl p-1">
+        ${[['all','All'],['pending','Needs Review'],['confirmed','Confirmed']].map(([v,l])=>`
+        <button onclick="txnFilter.status='${v}';render()" class="px-3 py-1.5 rounded-lg text-sm font-700 transition-all ${txnFilter.status===v?'bg-white shadow text-coral':'text-ink/60'}">${l}${v==='pending'&&pendingCount>0?' ('+pendingCount+')':''}</button>`).join('')}
+      </div>
+    </div>
+
+    ${txnSelected.size>0?`
+    <div class="bg-coral/10 border border-coral/30 rounded-xl p-3 flex items-center gap-3">
+      <span class="font-700 text-coral">${txnSelected.size} selected</span>
+      <span class="text-ink/60 text-sm">Assign category:</span>
+      <select id="bulk-cat" class="select w-44 text-sm py-2">
+        <option value="">Choose category...</option>
+        ${CATEGORIES.filter(c=>c.bucket!=='income'&&c.bucket!=='transfer').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+      </select>
+      <button id="bulk-apply" class="btn-primary text-sm py-2 px-3">Apply</button>
+      <button onclick="txnSelected.clear();render()" class="btn-ghost text-sm py-2">Cancel</button>
+    </div>`:``}
+
+    <!-- Table -->
+    <div class="card p-0 overflow-hidden">
+      <div class="table-header grid grid-cols-12 gap-2 px-4">
+        <div class="col-span-1"><input type="checkbox" id="select-all" class="rounded"></div>
+        <div class="col-span-2">Date</div>
+        <div class="col-span-4">Description</div>
+        <div class="col-span-2">Category</div>
+        <div class="col-span-2">Account</div>
+        <div class="col-span-1 text-right">Amount</div>
+      </div>
+      <div class="divide-y divide-cream-dark/40">
+        ${txns.length===0?`<div class="py-12 text-center text-ink/40"><div class="text-4xl mb-2">🔍</div><div>No transactions found</div></div>`:
+        txns.map(t=>{
+          const acc=S.accounts.find(a=>a.id===t.account)||{name:t.account};
+          const isPending = t.status==='pending_review';
+          return `
+          <div class="txn-row grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm ${txnSelected.has(t.id)?'selected':''} ${isPending?'bg-amber/5':''}">
+            <div class="col-span-1"><input type="checkbox" class="txn-check rounded" data-id="${t.id}" ${txnSelected.has(t.id)?'checked':''}></div>
+            <div class="col-span-2 text-ink/60 whitespace-nowrap">${fmt.dateShort(t.date)}${isPending?` <span class="badge bg-amber/20 text-amber-dark text-[10px] ml-1">Review</span>`:''}</div>
+            <div class="col-span-4 font-500 truncate">${escapeHtml(t.payee)}</div>
+            <div class="col-span-2">
+              <select class="cat-select text-xs border border-cream-dark/60 rounded-lg px-1.5 py-1 bg-cream" data-id="${t.id}">
+                ${CATEGORIES.map(c=>`<option value="${c.id}" ${t.category===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="col-span-2 text-ink/50 text-xs truncate">${escapeHtml(acc.name)}</div>
+            <div class="col-span-1 text-right font-700 ${t.amount<0?'text-coral':'text-sage'}">${fmt.currency(t.amount)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="text-xs text-ink/40 text-center">${txns.length} transactions</div>
+  </div>`;
+}
+function attachTransactionEvents(){
+  document.getElementById('select-all')?.addEventListener('change',function(){
+    const checks = document.querySelectorAll('.txn-check');
+    checks.forEach(c=>{ if(this.checked) txnSelected.add(c.dataset.id); else txnSelected.delete(c.dataset.id); });
+    render();
+  });
+  document.querySelectorAll('.txn-check').forEach(c=>{
+    c.addEventListener('change',function(){
+      if(this.checked) txnSelected.add(this.dataset.id); else txnSelected.delete(this.dataset.id);
+      render();
+    });
+  });
+  document.querySelectorAll('.cat-select').forEach(s=>{
+    s.addEventListener('change',function(){
+      const idx = S.transactions.findIndex(t=>t.id===this.dataset.id);
+      if(idx>=0){ S.transactions[idx].category=this.value; S.transactions[idx].status='confirmed'; saveState(); }
+    });
+  });
+  document.getElementById('bulk-apply')?.addEventListener('click',function(){
+    const newCat = document.getElementById('bulk-cat').value;
+    if(!newCat) return;
+    txnSelected.forEach(id=>{
+      const idx=S.transactions.findIndex(t=>t.id===id);
+      if(idx>=0){ S.transactions[idx].category=newCat; S.transactions[idx].status='confirmed'; }
+    });
+    saveState(); txnSelected.clear(); render();
+  });
+}
+
+// ═══════════════════════════════════════════════
+// VIEW: IMPORT
+// ═══════════════════════════════════════════════
+let importState = {stage:'upload', file:null, parsed:[], mapping:{date:0,description:1,amount:2}, accountId:'', errors:[], preview:[]};
+function renderImport(){
+  const stage = importState.stage;
+  return `
+  <div class="space-y-6 max-w-3xl mx-auto">
+    <div class="fredoka text-2xl font-bold">Import Transactions</div>
+
+    <!-- Stage indicator -->
+    <div class="flex items-center gap-0">
+      ${[['1','Upload'],['2','Preview'],['3','Done']].map(([n,l],i)=>{
+        const stageMap={upload:0,preview:1,done:2};
+        const cur=stageMap[stage]||0;
+        const done=i<cur, active=i===cur;
+        return `
+        <div class="flex items-center ${i<2?'flex-1':''}">
+          <div class="flex flex-col items-center">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${done?'bg-sage text-white':active?'bg-coral text-white':'bg-cream-dark text-ink/40'}">${done?'✓':n}</div>
+            <div class="text-xs font-600 mt-1 ${active?'text-coral':done?'text-sage':'text-ink/40'}">${l}</div>
+          </div>
+          ${i<2?`<div class="flex-1 h-0.5 mx-2 mb-4 ${done?'bg-sage':active?'bg-coral/30':'bg-cream-dark'}"></div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+
+    ${stage==='upload'?`
+    <div class="card p-6">
+      <div class="fredoka text-xl font-bold mb-1">Step 1: Choose your file</div>
+      <p class="text-ink/60 mb-5 text-sm">Upload a CSV export from any US bank. We'll detect the format automatically.</p>
+
+      <div class="mb-4">
+        <label class="block text-sm font-700 text-ink/70 mb-1.5">Account</label>
+        <select id="import-account" class="select">
+          <option value="">Select account...</option>
+          ${S.accounts.map(a=>`<option value="${a.id}">${a.name} (${a.type.replace('_',' ')})</option>`).join('')}
+        </select>
+      </div>
+
+      <div id="import-dropzone" class="dropzone p-10 text-center mb-4">
+        <div class="text-5xl mb-3">📂</div>
+        <div class="fredoka text-xl font-bold mb-1">Drop your CSV here</div>
+        <div class="text-sm text-ink/60 mb-4">CSV, OFX, or QFX · max 10MB</div>
+        <input type="file" id="import-file" accept=".csv,.ofx,.qfx" class="hidden">
+        <button onclick="document.getElementById('import-file').click()" class="btn-secondary">Browse files</button>
+      </div>
+      <div class="bg-cream rounded-xl p-4 text-sm">
+        <div class="font-bold mb-2">✅ Supported banks</div>
+        <div class="flex flex-wrap gap-2">
+          ${['Chase','Bank of America','Citi','Wells Fargo','Discover','Capital One','Amex','USAA','Ally'].map(b=>`<span class="bg-white px-2.5 py-1 rounded-lg border border-cream-dark/50 text-xs font-600">${b}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    `:stage==='preview'?`
+    <div class="card p-6">
+      <div class="fredoka text-xl font-bold mb-1">Step 2: Preview & Confirm</div>
+      <p class="text-ink/60 mb-5 text-sm">We found <strong>${importState.preview.length}</strong> transactions. Review and click Import to add them.</p>
+
+      ${importState.errors.length>0?`<div class="bg-amber/10 border border-amber/30 rounded-xl p-3 mb-4 text-sm"><span class="font-700 text-amber">⚠️ ${importState.errors.length} rows skipped</span> — could not be parsed.</div>`:''}
+
+      <div class="overflow-x-auto max-h-80 overflow-y-auto mb-5 border border-cream-dark/40 rounded-xl">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0"><tr class="table-header"><td>Date</td><td>Description</td><td>Amount</td><td>Category (auto)</td></tr></thead>
+          <tbody>
+            ${importState.preview.slice(0,30).map(r=>`
+            <tr class="border-b border-cream-dark/30 hover:bg-cream">
+              <td class="py-2 px-4 text-ink/60 whitespace-nowrap">${fmt.dateShort(r.date)}</td>
+              <td class="py-2 px-4 font-500 max-w-xs truncate">${escapeHtml(r.payee)}</td>
+              <td class="py-2 px-4 font-700 ${r.amount<0?'text-coral':'text-sage'}">${fmt.currency(r.amount)}</td>
+              <td class="py-2 px-4">${catBadge(r.category)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="flex gap-3">
+        <button id="import-confirm" class="btn-primary flex-1">✅ Import ${importState.preview.length} transactions</button>
+        <button onclick="importState.stage='upload';render()" class="btn-ghost px-5">← Back</button>
+      </div>
+    </div>
+    `:stage==='done'?`
+    <div class="card p-10 text-center">
+      <div class="text-6xl mb-4">🎉</div>
+      <div class="fredoka text-2xl font-bold mb-2">Import complete!</div>
+      <div class="text-ink/60 mb-6">Added <strong>${importState.preview.length}</strong> new transactions. Head to the ledger to review and categorise them.</div>
+      <div class="flex gap-3 justify-center">
+        <button onclick="navigate('transactions')" class="btn-primary">View Transactions →</button>
+        <button onclick="importState={stage:'upload',file:null,parsed:[],mapping:{date:0,description:1,amount:2},accountId:'',errors:[],preview:[]};render()" class="btn-ghost">Import another file</button>
+      </div>
+    </div>
+    `:''}
+  </div>`;
+}
+function handleCsvFile(file, accountId, onDone){
+  Papa.parse(file,{
+    header:false, skipEmptyLines:true,
+    complete: res=>{
+      const rows = res.data;
+      if(rows.length<2){ alert('File appears empty or unreadable.'); return; }
+      const header = rows[0].map(h=>h.toLowerCase().trim());
+      // Auto-detect columns
+      let di=header.findIndex(h=>h.includes('date'));
+      let pi=header.findIndex(h=>h.includes('desc')||h.includes('name')||h.includes('payee')||h.includes('memo'));
+      let ai=header.findIndex(h=>h.includes('amount')||h.includes('debit')||h.includes('credit'));
+      if(di<0)di=0; if(pi<0)pi=1; if(ai<0)ai=2;
+      const preview=[], errors=[];
+      rows.slice(1).forEach((row,idx)=>{
+        try{
+          const rawDate = row[di]?.trim();
+          const rawDesc = row[pi]?.trim();
+          const rawAmt  = row[ai]?.replace(/[$,\s]/g,'').trim();
+          if(!rawDate||!rawDesc||!rawAmt) return;
+          const dt = new Date(rawDate);
+          if(isNaN(dt)) return;
+          const dateStr = dt.toISOString().split('T')[0];
+          const amt = parseFloat(rawAmt);
+          if(isNaN(amt)) return;
+          // Auto-categorise
+          const catId = autoCat(rawDesc);
+          const type  = amt>0?'income':catId==='transfer'?'transfer':'expense';
+          preview.push({id:uid(),date:dateStr,payee:rawDesc,amount:amt,category:catId,account:accountId||S.accounts[0]?.id||'acc-1',type,status:'pending_review',notes:''});
+        } catch(e){ errors.push(idx); }
+      });
+      if(onDone){
+        S.transactions.push(...preview);
+        saveState();
+        onDone(preview.length);
+      } else {
+        importState.preview = preview;
+        importState.errors  = errors.map(String);
+        importState.stage   = 'preview';
+        render();
+      }
+    },
+    error: ()=>alert('Could not parse file. Please check it is a valid CSV.')
+  });
+}
+function autoCat(desc){
+  const d = desc.toLowerCase();
+  if(/rent|mortgage|hoa|oakwood|property/.test(d))         return 'housing';
+  if(/whole foods|trader joe|costco|aldi|kroger|safeway|grocery|market|food/.test(d)) return 'groceries';
+  if(/electric|comcast|at&t|verizon|internet|utility|water|gas bill|pg&e/.test(d))   return 'utilities';
+  if(/shell|bp|exxon|chevron|mobil|gas station|uber|lyft|transit|parking/.test(d))   return 'transport';
+  if(/restaurant|cafe|mcdonald|chipotle|starbucks|dining|bistro|olive garden|pizza|sushi/.test(d)) return 'dining';
+  if(/soccer|piano|school|tutor|daycare|kid|child|ymca|sport/.test(d))               return 'kids';
+  if(/amazon|target|walmart|macy|zara|h&m|shop|store|mall/.test(d))                  return 'shopping';
+  if(/netflix|spotify|hulu|disney|apple|google play|steam/.test(d))                  return 'entertainment';
+  if(/doctor|pharmacy|cvs|walgreen|hospital|dental|medical|health/.test(d))          return 'healthcare';
+  if(/salary|payroll|direct deposit|employer/.test(d))                               return 'income';
+  if(/payment|transfer|zelle|venmo|paypal/.test(d))                                  return 'transfer';
+  return 'other';
+}
+function attachImportEvents(){
+  const fileIn = document.getElementById('import-file');
+  if(fileIn){
+    fileIn.onchange = e=>{
+      const file = e.target.files[0]; if(!file) return;
+      const accId = document.getElementById('import-account')?.value||S.accounts[0]?.id||'';
+      importState.accountId = accId;
+      handleCsvFile(file, accId, null);
+    };
+  }
+  const dz = document.getElementById('import-dropzone');
+  if(dz){
+    dz.ondragover=e=>{e.preventDefault();dz.classList.add('drag-over')};
+    dz.ondragleave=()=>dz.classList.remove('drag-over');
+    dz.ondrop=e=>{
+      e.preventDefault(); dz.classList.remove('drag-over');
+      const file=e.dataTransfer.files[0]; if(!file) return;
+      const accId=document.getElementById('import-account')?.value||S.accounts[0]?.id||'';
+      importState.accountId=accId;
+      handleCsvFile(file,accId,null);
+    };
+  }
+  document.getElementById('import-confirm')?.addEventListener('click',()=>{
+    const existing = new Set(S.transactions.map(t=>`${t.date}|${t.payee}|${t.amount}`));
+    const deduped = importState.preview.filter(t=>!existing.has(`${t.date}|${t.payee}|${t.amount}`));
+    S.transactions.push(...deduped);
+    saveState();
+    importState.stage='done';
+    render();
+  });
+}
+
+// ═══════════════════════════════════════════════
+// VIEW: BUDGET
+// ═══════════════════════════════════════════════
+function renderBudget(){
+  const curTxns = txnsByMonth(S.transactions,CUR_Y,CUR_M);
+  const prevTxns= txnsByMonth(S.transactions,CUR_Y,CUR_M-1);
+  const bud = S.budget;
+
+  const needsCats  = CATEGORIES.filter(c=>c.bucket==='needs');
+  const wantsCats  = CATEGORIES.filter(c=>c.bucket==='wants');
+  const savingsCats= CATEGORIES.filter(c=>c.bucket==='savings');
+  const totalBudget = Object.values(bud).reduce((s,v)=>s+(v||0),0);
+  const income = 8400;
+
+  const needsTotal  = needsCats.reduce((s,c)=>s+(bud[c.id]||0),0);
+  const wantsTotal  = wantsCats.reduce((s,c)=>s+(bud[c.id]||0),0);
+  const savingsTotal= savingsCats.reduce((s,c)=>s+(bud[c.id]||0),0);
+
+  function catRow(c){
+    const spent   = spendByCat(curTxns.filter(t=>t.type==='expense'),c.id);
+    const lastMon = spendByCat(prevTxns.filter(t=>t.type==='expense'),c.id);
+    const suggested = lastMon>0?Math.ceil(lastMon/10)*10:bud[c.id]||0;
+    return `
+    <tr class="border-b border-cream-dark/40">
+      <td class="py-3 px-4"><span class="font-600">${c.icon} ${c.name}</span></td>
+      <td class="py-3 px-4 text-ink/60 text-sm">${lastMon>0?fmt.currencyAbs(lastMon):'—'}</td>
+      <td class="py-3 px-4 text-sage font-600 text-sm">${spent>0?fmt.currencyAbs(spent):'$0'}</td>
+      <td class="py-3 px-4">
+        <div class="flex items-center gap-2">
+          <span class="text-ink/50 text-sm">$</span>
+          <input type="number" class="budget-input w-24 border border-cream-dark/60 rounded-lg px-2 py-1.5 text-sm font-700 focus:border-coral outline-none" data-cat="${c.id}" value="${bud[c.id]||0}" min="0" step="10">
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  return `
+  <div class="space-y-6 max-w-4xl">
+    <div class="flex items-center justify-between">
+      <div class="fredoka text-2xl font-bold">Budget Setup</div>
+      <div class="text-sm text-ink/60">June 2024</div>
+    </div>
+
+    <!-- 50/30/20 summary -->
+    <div class="grid grid-cols-3 gap-4">
+      ${[['Needs 🏠','needs',needsTotal,needsCats],['Wants 🎉','wants',wantsTotal,wantsCats],['Savings 💰','savings',savingsTotal,savingsCats]].map(([label,bucket,total,cats])=>{
+        const pct=income>0?Math.round((total/income)*100):0;
+        const targetPct = bucket==='needs'?50:bucket==='wants'?30:20;
+        const ok = Math.abs(pct-targetPct)<=5;
+        return `<div class="card">
+          <div class="fredoka text-lg font-bold mb-1">${label}</div>
+          <div class="fredoka text-3xl font-bold ${bucket==='needs'?'text-sage':bucket==='wants'?'text-coral':'text-amber'}">${pct}%</div>
+          <div class="text-ink/50 text-sm mb-2">${fmt.currencyAbs(total)} / mo · target ${targetPct}%</div>
+          <div class="pacing-track"><div class="pacing-fill ${ok?'status-ok':'status-warn'}" style="width:${Math.min(pct*2,100)}%"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Category tables -->
+    ${[['Needs — Essentials','needs',needsCats],['Wants — Lifestyle','wants',wantsCats],['Savings & Debt','savings',savingsCats]].map(([title,bucket,cats])=>`
+    <div class="card p-0 overflow-hidden">
+      <div class="table-header flex justify-between items-center">
+        <span>${title}</span>
+        <span class="normal-case font-500">Based on last month's spending</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="table-header"><td class="col-span-3">Category</td><td>Last month</td><td>This month</td><td>Budget limit</td></tr></thead>
+        <tbody>${cats.map(catRow).join('')}</tbody>
+      </table>
+    </div>`).join('')}
+
+    <div class="flex items-center justify-between p-4 bg-cream rounded-xl">
+      <div class="text-sm">
+        <span class="font-700">Monthly income: </span><span class="text-sage font-700">${fmt.currencyAbs(income)}</span>
+        <span class="mx-2 text-ink/30">·</span>
+        <span class="font-700">Total budgeted: </span>
+        <span id="budget-total-display" class="font-700 ${totalBudget>income?'text-coral':'text-ink'}">${fmt.currencyAbs(totalBudget)}</span>
+        ${totalBudget>income?`<span class="text-coral text-sm ml-2">⚠️ Over income by ${fmt.currencyAbs(totalBudget-income)}</span>`:''}
+      </div>
+      <button id="save-budget" class="btn-primary">Save Budget ✓</button>
+    </div>
+  </div>`;
+}
+function attachBudgetEvents(){
+  document.querySelectorAll('.budget-input').forEach(inp=>{
+    inp.addEventListener('input',function(){
+      S.budget[this.dataset.cat] = parseInt(this.value)||0;
+      // Update total display
+      const total = Object.values(S.budget).reduce((s,v)=>s+(v||0),0);
+      const el = document.getElementById('budget-total-display');
+      if(el){ el.textContent = fmt.currencyAbs(total); el.className = `font-700 ${total>8400?'text-coral':'text-ink'}`; }
+    });
+  });
+  document.getElementById('save-budget')?.addEventListener('click',()=>{
+    saveState();
+    const btn = document.getElementById('save-budget');
+    btn.textContent='✅ Saved!'; btn.disabled=true;
+    setTimeout(()=>{ if(btn){ btn.textContent='Save Budget ✓'; btn.disabled=false; }},2000);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// VIEW: AI CHAT
+// ═══════════════════════════════════════════════
+const EXAMPLE_QUESTIONS = [
+  "How much did we spend on dining this month?",
+  "Are we on track for our vacation savings goal?",
+  "What were our top 5 expenses last month?",
+  "How does our grocery spending compare to our budget?",
+  "What's our net cash flow over the last 3 months?",
+];
+
+function renderChat(){
+  const isDemo = getGeminiKey()==='DEMO_MODE';
+  return `
+  <div class="flex flex-col h-[calc(100vh-120px)] max-w-3xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <div class="fredoka text-2xl font-bold">AI Budget Assistant ✨</div>
+        <div class="text-ink/60 text-sm">Ask anything about your family's finances</div>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <div class="w-2 h-2 rounded-full ${isDemo?'bg-amber':'bg-sage'} animate-pulse"></div>
+        <span class="font-600 text-ink/60">${isDemo?'Demo mode':'Gemini 1.5 Flash'}</span>
+      </div>
+    </div>
+
+    ${isDemo?`<div class="bg-amber/10 border border-amber/30 rounded-xl p-3 mb-4 text-sm flex items-center gap-2"><span class="text-amber font-700">⚠️ Demo mode</span> <span class="text-ink/60">Responses are simulated. <button onclick="setGeminiKey('');render()" class="text-coral underline">Add Gemini key</button> for live AI.</span></div>`:''}
+
+    <!-- Chat area -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4 p-4 bg-cream rounded-2xl border border-cream-dark/40">
+      ${S.chatHistory.length===0?`
+      <div class="text-center py-8">
+        <div class="text-5xl mb-3">✨</div>
+        <div class="fredoka text-xl font-bold mb-2">Hi! I'm your budget assistant.</div>
+        <div class="text-ink/60 mb-6 text-sm">I know your family's real spending data. Ask me anything.</div>
+        <div class="flex flex-wrap gap-2 justify-center">
+          ${EXAMPLE_QUESTIONS.map(q=>`<button onclick="sendChat('${q.replace(/'/g,"\\'")}');event.stopPropagation()" class="bg-white border border-cream-dark/60 rounded-xl px-3 py-2 text-sm font-500 hover:border-coral hover:text-coral transition-all text-left">"${q}"</button>`).join('')}
+        </div>
+      </div>`:
+      S.chatHistory.map(m=>`
+      <div class="flex ${m.role==='user'?'justify-end':'justify-start'}">
+        ${m.role==='assistant'?`<div class="w-8 h-8 rounded-full bg-coral text-white flex items-center justify-center text-sm flex-shrink-0 mr-2 mt-1 fredoka font-bold">✦</div>`:''}
+        <div class="${m.role==='user'?'chat-user':'chat-ai'}">${m.role==='assistant'?formatAiMessage(m.text):escapeHtml(m.text)}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Input -->
+    <div class="flex gap-3 items-end">
+      <div class="flex-1 relative">
+        <textarea id="chat-input" class="input resize-none pr-3" rows="2" placeholder="Ask about your spending, budget, goals..." style="height:52px"></textarea>
+      </div>
+      <button id="chat-send" class="btn-primary h-[52px] px-6 whitespace-nowrap">Send ✨</button>
+    </div>
+    <div class="text-xs text-ink/40 text-center mt-2">Not financial advice · Answers are based on your household data only</div>
+  </div>`;
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Renders AI markdown to safe HTML.
+// Step 1: escapeHtml neutralises any raw tags from the API response.
+// Step 2: regex injects ONLY the allowed inline tags (<strong>, <em>, <br>).
+// Step 3: DOMPurify strips anything else that somehow slipped through
+//         (e.g. prompt-injection attempts in AI output).
+function formatAiMessage(text){
+  const escaped = escapeHtml(text)
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/\n/g,'<br>');
+
+  if(typeof DOMPurify !== 'undefined'){
+    return DOMPurify.sanitize(escaped, {
+      ALLOWED_TAGS: ['strong','em','br'],
+      ALLOWED_ATTR: []   // no attributes — blocks href/src injection
+    });
+  }
+  // DOMPurify not yet loaded (e.g. offline) — fall back to plain text only
+  return escapeHtml(text).replace(/\n/g,'<br>');
+}
+function scrollChatToBottom(){
+  const el=document.getElementById('chat-messages');
+  if(el) el.scrollTop=el.scrollHeight;
+}
+async function sendChat(msg){
+  msg = msg || document.getElementById('chat-input')?.value?.trim();
+  if(!msg) return;
+  const input = document.getElementById('chat-input');
+  if(input) input.value='';
+  S.chatHistory.push({role:'user',text:msg}); saveState();
+  render(); scrollChatToBottom();
+
+  // Add typing indicator
+  const msgArea = document.getElementById('chat-messages');
+  if(msgArea){
+    const typing=document.createElement('div');
+    typing.id='typing-ind';
+    typing.className='flex justify-start';
+    typing.innerHTML=`<div class="w-8 h-8 rounded-full bg-coral text-white flex items-center justify-center text-sm flex-shrink-0 mr-2 fredoka font-bold">✦</div><div class="chat-typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+    msgArea.appendChild(typing);
+    msgArea.scrollTop=msgArea.scrollHeight;
+  }
+
+  try{
+    let reply;
+    if(getGeminiKey()==='DEMO_MODE'){
+      await new Promise(r=>setTimeout(r,1200));
+      reply = demoAiReply(msg);
+    } else {
+      reply = await chat(msg);
+    }
+    S.chatHistory.push({role:'assistant',text:reply}); saveState();
+  } catch(e){
+    S.chatHistory.push({role:'assistant',text:`Sorry, I ran into an error: ${e.message}. Please check your API key in settings.`}); saveState();
+  }
+  render(); scrollChatToBottom();
+}
+function demoAiReply(msg){
+  const m=msg.toLowerCase();
+  if(/dining|restaurant|food out/.test(m)) return "This month (Jun 1–18) you've spent **$272.70** on dining — that's 45% of your $600 budget with 40% of the month left. You're on track! Last month you spent $239.00 on dining.";
+  if(/vacation|goal|saving/.test(m)) return "Great news! 🎉 You've saved **$3,240** toward your vacation goal of $5,000 — that's 65% done. At your current $420/month pace, you'll reach your goal **4 months early**. You're well ahead of schedule!";
+  if(/grocery|groceries/.test(m)) return "June grocery spending so far: **$544.89** across 4 transactions (Whole Foods, Trader Joe's, Costco). Your monthly budget is $600, so you've used 91% with 12 days remaining. Watch the spending this last stretch!";
+  if(/budget|over|track/.test(m)) return "Here's your June budget status:\n✅ **Housing**: $2,200 / $2,200 (100% — paid!)\n✅ **Transport**: $111 / $400 (28%)\n⚠️ **Groceries**: $545 / $600 (91%)\n✅ **Dining**: $273 / $600 (45%)\n✅ **Kids**: $125 / $500 (25%)\nOverall you're doing well — no categories are over budget yet.";
+  if(/income|earn|salary/.test(m)) return "This month you've received **$8,400** in income — two direct deposits of $4,200 each (June 1 and June 15). Last month was also $8,400. Consistent income is great for budgeting!";
+  if(/overspend|biggest|most/.test(m)) return "Last month (May) your **top 3 expenses** were:\n1. 🏠 Rent: $2,200\n2. 🛒 Groceries: $554.74 (Costco $245, Whole Foods $134, Trader Joe's $175)\n3. 🍽️ Dining: $239 — mainly the Capital Grille anniversary dinner ($138).";
+  return `I can answer questions about your spending, budget tracking, and savings goals! Try asking:\n• "How much did we spend on groceries last month?"\n• "Are we on track for vacation savings?"\n• "What's our net cash flow?"`;
+}
+function attachChatEvents(){
+  const sendBtn = document.getElementById('chat-send');
+  const input   = document.getElementById('chat-input');
+  if(sendBtn) sendBtn.onclick=()=>sendChat();
+  if(input){
+    input.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();} });
+    input.addEventListener('input',function(){ this.style.height='52px'; this.style.height=Math.min(this.scrollHeight,120)+'px'; });
+  }
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.authMode = 'login';
+window.onboardStep = 0;
+window.navigate = navigate;
+window.sendChat = sendChat;
+window.setGeminiKey = setGeminiKey;
+window.autoCat = autoCat;
+window.txnFilter = txnFilter;
+window.txnSelected = txnSelected;
+window.importState = importState;
+
+render();
+  </script>
+</body>
+</html>

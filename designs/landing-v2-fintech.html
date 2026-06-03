@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FamilyBudget — Design Option 2: Meridian (Dark Fintech)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07091A;
+      --bg2:       #0D1128;
+      --bg3:       #111830;
+      --surface:   rgba(255,255,255,0.04);
+      --border:    rgba(255,255,255,0.08);
+      --border-hi: rgba(79,140,247,0.35);
+      --text:      #E8ECFF;
+      --muted:     rgba(232,236,255,0.45);
+      --dim:       rgba(232,236,255,0.22);
+      --blue:      #4F8CF7;
+      --blue-lo:   rgba(79,140,247,0.12);
+      --blue-glow: rgba(79,140,247,0.25);
+      --teal:      #1DD6B5;
+      --red:       #FF5B5B;
+      --amber:     #FFB347;
+      --green:     #4ADE80;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* grid noise texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(79,140,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,140,247,0.03) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 72px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7,9,26,0.85);
+      backdrop-filter: blur(20px);
+    }
+    .nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--blue);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .nav-links { display: flex; gap: 36px; list-style: none; }
+    .nav-links a {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-login {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 16px;
+    }
+    .nav-cta {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--blue);
+      padding: 9px 22px;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: opacity 0.2s, box-shadow 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.9; box-shadow: 0 0 20px var(--blue-glow); }
+
+    /* ── HERO ── */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      padding: 80px 72px 100px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: -100px;
+      left: -100px;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(79,140,247,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--blue-lo);
+      border: 1px solid var(--border-hi);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--blue);
+      letter-spacing: 0.04em;
+      margin-bottom: 28px;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--blue);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .hero-headline {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(42px, 5.5vw, 76px);
+      font-weight: 800;
+      line-height: 1.0;
+      color: var(--text);
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+    }
+    .hero-headline .accent { color: var(--blue); }
+    .hero-headline .accent2 { color: var(--teal); }
+    .hero-sub {
+      font-size: 17px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 480px;
+      margin-bottom: 40px;
+    }
+    .hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .btn-blue {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: #fff;
+      background: var(--blue);
+      padding: 14px 32px;
+      text-decoration: none;
+      border-radius: 7px;
+      transition: box-shadow 0.25s, opacity 0.2s;
+    }
+    .btn-blue:hover { box-shadow: 0 0 28px var(--blue-glow); opacity: 0.95; }
+    .btn-outline {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--muted);
+      background: transparent;
+      padding: 14px 28px;
+      text-decoration: none;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--border-hi); color: var(--text); }
+    .hero-trust {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 24px;
+      font-size: 13px;
+      color: var(--dim);
+    }
+    .trust-avatars { display: flex; }
+    .trust-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: -6px;
+    }
+    .trust-avatar:first-child { margin-left: 0; }
+
+    /* ── DASHBOARD MOCKUP ── */
+    .dashboard {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px var(--border), inset 0 1px 0 rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .dashboard::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: 20%;
+      right: 20%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--blue), transparent);
+    }
+    .dash-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg3);
+    }
+    .dash-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dash-title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .dash-body { padding: 20px; }
+    .dash-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .dash-period {
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 0.08em;
+    }
+    .dash-total {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .dash-total sub {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+      vertical-align: baseline;
+    }
+    .dash-status {
+      font-size: 12px;
+      color: var(--green);
+      background: rgba(74,222,128,0.1);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .budget-rows { display: flex; flex-direction: column; gap: 14px; }
+    .budget-row { display: flex; flex-direction: column; gap: 6px; }
+    .budget-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+    }
+    .budget-cat {
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cat-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+    .budget-nums { color: var(--muted); font-weight: 400; font-size: 12px; }
+    .budget-nums .over { color: var(--red); }
+    .bar-track {
+      height: 5px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      animation: barGrow 1.2s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    @keyframes barGrow {
+      from { width: 0 !important; }
+    }
+    .bar-green  { background: var(--green); }
+    .bar-blue   { background: var(--blue); }
+    .bar-amber  { background: var(--amber); }
+    .bar-red    { background: var(--red); }
+    .dash-footer {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ai-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(29,214,181,0.08);
+      border: 1px solid rgba(29,214,181,0.2);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      color: var(--teal);
+      cursor: pointer;
+    }
+    .ai-pill-icon { font-size: 13px; }
+    .dash-footer-hint { font-size: 11.5px; color: var(--dim); margin-left: 4px; }
+
+    /* ── METRICS STRIP ── */
+    .metrics-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    .metric {
+      padding: 32px 72px 32px;
+      border-right: 1px solid var(--border);
+    }
+    .metric:last-child { border-right: none; }
+    .metric-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .metric-val .unit { font-size: 20px; color: var(--blue); }
+    .metric-lbl {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── FEATURES ── */
+    .features {
+      padding: 96px 72px;
+      position: relative;
+      z-index: 1;
+    }
+    .feat-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 64px;
+    }
+    .feat-header-line {
+      width: 32px;
+      height: 2px;
+      background: var(--blue);
+    }
+    .feat-header-text {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+    .feat-title-big {
+      font-family: 'Syne', sans-serif;
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .features-list { display: flex; flex-direction: column; gap: 1px; }
+    .feat-row {
+      display: grid;
+      grid-template-columns: 2fr 3fr 2fr;
+      align-items: start;
+      gap: 48px;
+      padding: 40px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .feat-row:first-child { border-top: 1px solid var(--border); }
+    .feat-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--border);
+      line-height: 1;
+    }
+    .feat-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+    }
+    .feat-desc {
+      font-size: 15px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+    .feat-tag-pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--blue);
+      background: var(--blue-lo);
+      border: 1px solid var(--border-hi);
+      border-radius: 4px;
+      padding: 4px 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ── AI TERMINAL ── */
+    .ai-section {
+      padding: 96px 72px;
+      background: var(--bg2);
+      position: relative;
+      z-index: 1;
+    }
+    .ai-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 72px;
+      align-items: center;
+    }
+    .ai-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 20px;
+    }
+    .ai-eyebrow-line { width: 24px; height: 1px; background: var(--teal); }
+    .ai-headline {
+      font-family: 'Syne', sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+    }
+    .ai-headline .tl { color: var(--teal); }
+    .ai-body {
+      font-size: 16px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.75;
+      margin-bottom: 28px;
+    }
+    .ai-feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .ai-feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .ai-check {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(29,214,181,0.12);
+      border: 1px solid rgba(29,214,181,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--teal);
+      flex-shrink: 0;
+    }
+
+    .terminal {
+      background: #0A0C1A;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.4);
+    }
+    .terminal-bar {
+      background: var(--bg3);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .term-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .term-title {
+      flex: 1;
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--dim);
+    }
+    .terminal-body { padding: 20px; font-family: 'Outfit', monospace; font-size: 13.5px; }
+    .t-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .t-prompt { color: var(--dim); flex-shrink: 0; user-select: none; }
+    .t-user { color: var(--text); }
+    .t-system { color: var(--teal); font-size: 11px; letter-spacing: 0.06em; }
+    .t-response { color: rgba(232,236,255,0.75); }
+    .t-data {
+      font-size: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-top: 8px;
+      width: 100%;
+    }
+    .t-data-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 3px 0;
+    }
+    .t-data-row .hi { color: var(--teal); font-weight: 500; }
+    .t-data-row .warn { color: var(--amber); }
+    .cursor {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      background: var(--blue);
+      animation: blink 1s step-end infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── PRIVACY SECTION ── */
+    .privacy-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    .priv-left {
+      padding: 72px;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+    }
+    .priv-right {
+      padding: 72px;
+      background: var(--bg2);
+    }
+    .priv-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--blue-lo);
+      border: 1px solid var(--border-hi);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    .priv-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .priv-body {
+      font-size: 15px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+    .priv-bullets {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .priv-bullets li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .priv-bullets li::before {
+      content: '→';
+      color: var(--blue);
+      font-size: 12px;
+    }
+
+    /* ── PRICING ── */
+    .pricing {
+      padding: 96px 72px;
+      position: relative;
+      z-index: 1;
+    }
+    .pricing-header { text-align: center; margin-bottom: 56px; }
+    .pricing-eyebrow {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 12px;
+    }
+    .pricing-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    .price-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px;
+    }
+    .price-card.featured {
+      border-color: var(--blue);
+      background: var(--blue-lo);
+      position: relative;
+    }
+    .price-badge {
+      position: absolute;
+      top: -11px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--blue);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+    }
+    .price-tier {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .price-amount {
+      font-family: 'Syne', sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .price-amount sup { font-size: 22px; vertical-align: top; margin-top: 8px; }
+    .price-period { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+    .price-features { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .price-feat {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .price-feat .check { color: var(--green); font-size: 12px; }
+    .price-feat .lock { color: var(--dim); font-size: 12px; }
+    .price-feat .crossed { text-decoration: line-through; color: var(--dim); }
+    .btn-card {
+      display: block;
+      text-align: center;
+      padding: 12px;
+      border-radius: 7px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-card-ghost {
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-card-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+    .btn-card-blue {
+      color: #fff;
+      background: var(--blue);
+    }
+    .btn-card-blue:hover { box-shadow: 0 0 20px var(--blue-glow); }
+
+    /* ── CTA ── */
+    .cta-section {
+      padding: 96px 72px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 800px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(79,140,247,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(40px, 5vw, 64px);
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+    }
+    .cta-title .accent { color: var(--blue); }
+    .cta-sub {
+      font-size: 17px;
+      font-weight: 300;
+      color: var(--muted);
+      margin-bottom: 40px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .cta-btns { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .cta-fine { font-size: 13px; color: var(--dim); margin-top: 16px; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 36px 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--dim);
+      position: relative;
+      z-index: 1;
+    }
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    footer a { color: var(--dim); text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--text); }
+    .footer-links { display: flex; gap: 24px; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="logo-mark">F</div>
+    FamilyBudget
+  </a>
+  <ul class="nav-links">
+    <li><a href="#">Features</a></li>
+    <li><a href="#">How it works</a></li>
+    <li><a href="#">Pricing</a></li>
+    <li><a href="#">Privacy</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="#" class="nav-login">Sign in</a>
+    <a href="#" class="nav-cta">Get started free →</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div>
+    <div class="hero-badge">
+      <div class="badge-dot"></div>
+      The Mint alternative built for families
+    </div>
+    <h1 class="hero-headline">
+      Budget smarter.<br>
+      Together.<br>
+      <span class="accent">Privately.</span>
+    </h1>
+    <p class="hero-sub">
+      Import your bank statements, track spending across every account,
+      and ask your AI assistant questions in plain English.
+      No bank login. No guesswork. One household view.
+    </p>
+    <div class="hero-actions">
+      <a href="#" class="btn-blue">Start free — no card needed</a>
+      <a href="#" class="btn-outline">See a demo</a>
+    </div>
+    <div class="hero-trust">
+      <div class="trust-avatars">
+        <div class="trust-avatar" style="background:#2D5A3D;color:#fff">S</div>
+        <div class="trust-avatar" style="background:#3A4B8A;color:#fff">D</div>
+        <div class="trust-avatar" style="background:#7A3A5A;color:#fff">M</div>
+        <div class="trust-avatar" style="background:#4A6A3A;color:#fff">R</div>
+      </div>
+      Trusted by 48,000+ households after Mint shut down
+    </div>
+  </div>
+
+  <!-- DASHBOARD MOCKUP -->
+  <div class="dashboard">
+    <div class="dash-bar">
+      <div class="dash-dot" style="background:#FF5B5B"></div>
+      <div class="dash-dot" style="background:#FFB347"></div>
+      <div class="dash-dot" style="background:#4ADE80"></div>
+      <span class="dash-title">FamilyBudget — June 2024</span>
+    </div>
+    <div class="dash-body">
+      <div class="dash-header">
+        <div>
+          <div class="dash-period">JUNE 2024 · 18 DAYS LEFT</div>
+          <div class="dash-total">$4,218 <sub>/ $6,200 budget</sub></div>
+        </div>
+        <div class="dash-status">On track ↗</div>
+      </div>
+
+      <div class="budget-rows">
+        <div class="budget-row">
+          <div class="budget-row-top">
+            <span class="budget-cat">
+              <span class="cat-icon" style="background:rgba(74,222,128,0.12);color:#4ADE80">🏠</span>
+              Housing
+            </span>
+            <span class="budget-nums">$1,800 / $1,800</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-green" style="width:100%;animation-delay:0.1s"></div>
+          </div>
+        </div>
+
+        <div class="budget-row">
+          <div class="budget-row-top">
+            <span class="budget-cat">
+              <span class="cat-icon" style="background:rgba(79,140,247,0.12);color:#4F8CF7">🛒</span>
+              Groceries
+            </span>
+            <span class="budget-nums">$468 / $600</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-blue" style="width:78%;animation-delay:0.2s"></div>
+          </div>
+        </div>
+
+        <div class="budget-row">
+          <div class="budget-row-top">
+            <span class="budget-cat">
+              <span class="cat-icon" style="background:rgba(255,179,71,0.12);color:#FFB347">🍽️</span>
+              Dining
+            </span>
+            <span class="budget-nums"><span class="over">$672 / $600 ↑</span></span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-red" style="width:100%;animation-delay:0.3s"></div>
+          </div>
+        </div>
+
+        <div class="budget-row">
+          <div class="budget-row-top">
+            <span class="budget-cat">
+              <span class="cat-icon" style="background:rgba(29,214,181,0.12);color:#1DD6B5">🎒</span>
+              Kids
+            </span>
+            <span class="budget-nums">$260 / $500</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-blue" style="width:52%;animation-delay:0.4s"></div>
+          </div>
+        </div>
+
+        <div class="budget-row">
+          <div class="budget-row-top">
+            <span class="budget-cat">
+              <span class="cat-icon" style="background:rgba(74,222,128,0.12);color:#4ADE80">💰</span>
+              Savings
+            </span>
+            <span class="budget-nums">$280 / $500</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill bar-green" style="width:56%;animation-delay:0.5s"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="dash-footer">
+      <div class="ai-pill">
+        <span class="ai-pill-icon">✦</span>
+        Ask your assistant
+      </div>
+      <span class="dash-footer-hint">Try: "Why is dining over budget?"</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── METRICS ── -->
+<div class="metrics-strip">
+  <div class="metric">
+    <div class="metric-val">48<span class="unit">K+</span></div>
+    <div class="metric-lbl">Households since Mint closed</div>
+  </div>
+  <div class="metric">
+    <div class="metric-val">$2.3<span class="unit">B</span></div>
+    <div class="metric-lbl">Transactions tracked</div>
+  </div>
+  <div class="metric">
+    <div class="metric-val">80<span class="unit">%</span></div>
+    <div class="metric-lbl">Transactions auto-categorized</div>
+  </div>
+  <div class="metric">
+    <div class="metric-val">20<span class="unit">min</span></div>
+    <div class="metric-lbl">Avg time to first dashboard</div>
+  </div>
+</div>
+
+<!-- ── FEATURES ── -->
+<section class="features">
+  <div class="feat-header">
+    <div class="feat-header-line"></div>
+    <span class="feat-header-text">What makes it different</span>
+  </div>
+  <h2 class="feat-title-big">Three things no other<br>budget tool does together.</h2>
+
+  <div class="features-list" style="margin-top:48px">
+    <div class="feat-row">
+      <div class="feat-num">01</div>
+      <div>
+        <div class="feat-name">Family-native by design</div>
+        <p class="feat-desc">Tag every transaction to a household member or mark it shared. Two incomes, multiple accounts, one unified budget. Not bolted on — built in from day one.</p>
+      </div>
+      <div><span class="feat-tag-pill">Household model</span></div>
+    </div>
+
+    <div class="feat-row">
+      <div class="feat-num">02</div>
+      <div>
+        <div class="feat-name">No bank login. Ever.</div>
+        <p class="feat-desc">Download your CSV from your bank's website. Upload it here. Your credentials stay with you. No Plaid, no OAuth, no stored bank passwords. File-based by principle, not by limitation.</p>
+      </div>
+      <div><span class="feat-tag-pill">Privacy-first</span></div>
+    </div>
+
+    <div class="feat-row">
+      <div class="feat-num">03</div>
+      <div>
+        <div class="feat-name">AI assistant that knows your data</div>
+        <p class="feat-desc">Ask "Are we on track for vacation savings?" or "What's our dining trend?" It queries your actual transactions and answers in plain English. Not generic advice — your numbers.</p>
+      </div>
+      <div><span class="feat-tag-pill">AI-powered</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── AI TERMINAL ── -->
+<section class="ai-section">
+  <div class="ai-inner">
+    <div>
+      <div class="ai-eyebrow">
+        <div class="ai-eyebrow-line"></div>
+        AI Financial Assistant
+      </div>
+      <h2 class="ai-headline">Your data.<br>Your questions.<br><span class="tl">Real answers.</span></h2>
+      <p class="ai-body">
+        Stop reading charts. Ask your assistant directly. It understands your
+        household's actual spending history and answers from your data — not from
+        generic budgeting advice.
+      </p>
+      <div class="ai-feature-list">
+        <div class="ai-feature-item">
+          <div class="ai-check">✓</div>
+          Queries your real transaction data, not a generic model
+        </div>
+        <div class="ai-feature-item">
+          <div class="ai-check">✓</div>
+          Understands multi-member household context
+        </div>
+        <div class="ai-feature-item">
+          <div class="ai-check">✓</div>
+          Never gives financial advice — gives you your own facts
+        </div>
+      </div>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="term-dot" style="background:#FF5B5B"></div>
+        <div class="term-dot" style="background:#FFB347"></div>
+        <div class="term-dot" style="background:#4ADE80"></div>
+        <span class="term-title">FamilyBudget Assistant</span>
+      </div>
+      <div class="terminal-body">
+        <div class="t-line">
+          <span class="t-prompt">you›</span>
+          <span class="t-user">Are we on track for the vacation fund?</span>
+        </div>
+        <div class="t-line" style="flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span class="t-prompt" style="color:var(--teal)">ai›</span>
+            <span class="t-response">Checking your savings goal…</span>
+          </div>
+          <div class="t-data">
+            <div class="t-data-row"><span>Goal</span><span>Vacation Fund · $5,000</span></div>
+            <div class="t-data-row"><span>Saved</span><span class="hi">$3,240 (65%)</span></div>
+            <div class="t-data-row"><span>Monthly rate</span><span>$420/mo</span></div>
+            <div class="t-data-row"><span>Projected completion</span><span class="hi">~4 months ✓</span></div>
+          </div>
+          <span class="t-response" style="margin-top:4px">You're ahead of schedule by about 4 months.</span>
+        </div>
+        <div class="t-line">
+          <span class="t-prompt">you›</span>
+          <span class="t-user">Why is dining over budget?<span class="cursor"></span></span>
+        </div>
+        <div class="t-line" style="flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span class="t-prompt" style="color:var(--teal)">ai›</span>
+            <span class="t-response">Analyzing dining transactions Jun 1–18…</span>
+          </div>
+          <div class="t-data">
+            <div class="t-data-row"><span>Budget</span><span>$600 / month</span></div>
+            <div class="t-data-row"><span>Spent (18 days)</span><span class="warn">$672 — 12% over</span></div>
+            <div class="t-data-row"><span>Top merchant</span><span>Olive Garden (×3)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRIVACY ── -->
+<div class="privacy-section">
+  <div class="priv-left">
+    <div class="priv-icon">🔒</div>
+    <div class="priv-title">No bank login. Ever.</div>
+    <p class="priv-body">
+      We built this for families who don't want to hand over their banking credentials to a third-party service.
+      File-based import is our design choice, not our limitation.
+    </p>
+    <ul class="priv-bullets">
+      <li>No Plaid, no OAuth, no stored passwords</li>
+      <li>Files are parsed and deleted — never retained</li>
+      <li>Household data is isolated and encrypted at rest</li>
+      <li>Export or delete your data at any time</li>
+    </ul>
+  </div>
+  <div class="priv-right">
+    <div class="priv-icon">👨‍👩‍👧‍👦</div>
+    <div class="priv-title">One household. Multiple members.</div>
+    <p class="priv-body">
+      Invite your partner as an editor, or give a co-parent view-only access.
+      Tag transactions to members or mark them shared. Everyone sees the same truth.
+    </p>
+    <ul class="priv-bullets">
+      <li>Owner, Editor, and Viewer roles</li>
+      <li>Per-member spending attribution</li>
+      <li>Shared goals visible to all members</li>
+      <li>Import from any US bank CSV format</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ── PRICING ── -->
+<section class="pricing">
+  <div class="pricing-header">
+    <div class="pricing-eyebrow">Simple pricing</div>
+    <h2 class="pricing-title">Start free. Upgrade when it matters.</h2>
+  </div>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="price-tier">Free</div>
+      <div class="price-amount">$0</div>
+      <div class="price-period">forever, no card needed</div>
+      <div class="price-features">
+        <div class="price-feat"><span class="check">✓</span> Unlimited file imports</div>
+        <div class="price-feat"><span class="check">✓</span> 6 months of history</div>
+        <div class="price-feat"><span class="check">✓</span> AI assistant (10 queries/mo)</div>
+        <div class="price-feat"><span class="check">✓</span> Budget wizard + pacing</div>
+        <div class="price-feat"><span class="check">✓</span> 1 household, 2 members</div>
+        <div class="price-feat"><span class="lock">🔒</span> <span class="crossed">CSV/PDF export</span></div>
+        <div class="price-feat"><span class="lock">🔒</span> <span class="crossed">Full history (6+ months)</span></div>
+      </div>
+      <a href="#" class="btn-card btn-card-ghost">Start for free</a>
+    </div>
+    <div class="price-card featured">
+      <div class="price-badge">Most popular</div>
+      <div class="price-tier">Premium</div>
+      <div class="price-amount"><sup>$</sup>9</div>
+      <div class="price-period">per month · billed annually</div>
+      <div class="price-features">
+        <div class="price-feat"><span class="check">✓</span> Everything in Free</div>
+        <div class="price-feat"><span class="check">✓</span> Unlimited history</div>
+        <div class="price-feat"><span class="check">✓</span> Unlimited AI queries</div>
+        <div class="price-feat"><span class="check">✓</span> CSV &amp; PDF export</div>
+        <div class="price-feat"><span class="check">✓</span> Priority support</div>
+        <div class="price-feat"><span class="check">✓</span> Early access to new features</div>
+      </div>
+      <a href="#" class="btn-card btn-card-blue">Upgrade to Premium</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <h2 class="cta-title">Your family's finances.<br><span class="accent">Finally, one view.</span></h2>
+  <p class="cta-sub">Import two statements and have a working dashboard in under 20 minutes. Free to start.</p>
+  <div class="cta-btns">
+    <a href="#" class="btn-blue">Get started free</a>
+    <a href="#" class="btn-outline">Read our privacy promise</a>
+  </div>
+  <p class="cta-fine">No bank login · No credit card · No spreadsheets</p>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <a href="#" class="footer-logo">
+    <div class="logo-mark">F</div>
+    FamilyBudget
+  </a>
+  <div>© 2024 FamilyBudget · Not financial advice.</div>
+  <div class="footer-links">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Support</a>
+    <a href="#">Blog</a>
+  </div>
+</footer>
+
+</body>
+</html>
