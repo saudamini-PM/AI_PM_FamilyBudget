@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Budget Assistant — Idea Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens ──────────────────────────────────────────────── */
+:root {
+  --cream:      #FFFDF5;
+  --ink:        #1C1814;
+  --ink-light:  #3D3529;
+  --red:        #C8102E;
+  --muted:      #6B6054;
+  --rule:       #C4B8A8;
+  --tint:       #F4EFE4;
+  --gold:       #9B6914;
+  font-size: clamp(12px, 1.05vw, 15px);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: 'Lora', Georgia, serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ── Slide engine ───────────────────────────────────────────────── */
+#deck { width: 100vw; height: 100vh; position: relative; }
+
+.slide {
+  position: absolute;
+  inset: 0;
+  padding: 2.8vh 5.5vw 4.5vh;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .55s ease;
+  overflow: hidden;
+}
+.slide.active { opacity: 1; pointer-events: all; }
+
+/* ── Shared type ────────────────────────────────────────────────── */
+h2 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.12;
+  color: var(--ink);
+}
+h3 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+}
+p, li {
+  font-family: 'Lora', serif;
+  font-size: .86rem;
+  line-height: 1.65;
+  color: var(--ink-light);
+}
+code {
+  font-family: 'Courier New', monospace;
+  font-size: .78rem;
+  background: var(--tint);
+  padding: .05em .3em;
+  border-radius: 2px;
+  color: var(--gold);
+}
+.label {
+  font-family: 'Lora', serif;
+  font-size: .6rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rule  { border: none; border-top: 1px solid var(--rule); }
+.rule2 { border: none; border-top: 2px solid var(--ink); }
+.ornament { text-align: center; font-size: .65rem; color: var(--rule); letter-spacing: .5em; }
+
+/* ── Slide header ───────────────────────────────────────────────── */
+.slide-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: .55em;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: .55em;
+}
+.slide-brand {
+  font-family: 'Playfair Display', serif;
+  font-size: .7rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-align: center;
+  flex: 1;
+}
+.slide-num {
+  font-size: .6rem;
+  color: var(--muted);
+  text-align: right;
+  min-width: 3.5em;
+}
+
+/* ── Pull quote ─────────────────────────────────────────────────── */
+.pull {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.38;
+  color: var(--ink);
+  border-left: 3px solid var(--red);
+  padding-left: 1em;
+  margin: .5em 0;
+}
+
+/* ── Stat block ─────────────────────────────────────────────────── */
+.stat-row { display: flex; gap: 1em; margin-top: .8em; }
+.stat {
+  flex: 1;
+  text-align: center;
+  padding: .65em .4em;
+  border: 1px solid var(--rule);
+  background: var(--tint);
+}
+.stat-n {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+.stat-lbl { font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .2em; }
+
+/* ── Editorial table ────────────────────────────────────────────── */
+.etable { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.etable thead tr { border-bottom: 2px solid var(--ink); }
+.etable th {
+  font-family: 'Lora', serif;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 400;
+  padding: .35em .5em .35em 0;
+  text-align: left;
+}
+.etable td {
+  padding: .38em .5em .38em 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-light);
+  vertical-align: top;
+  line-height: 1.45;
+}
+.etable .us td   { background: var(--tint); font-weight: 600; color: var(--ink); padding-left: .35em; }
+.etable .us td:first-child { color: var(--red); }
+.yes  { color: var(--ink); }
+.no   { color: var(--rule); }
+.part { color: var(--gold); }
+
+/* ── Pain grid ──────────────────────────────────────────────────── */
+.pain-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .65em;
+  flex: 1;
+}
+.pain {
+  border-left: 2px solid var(--red);
+  padding: .45em 0 .45em .75em;
+}
+.pain h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: .15em;
+}
+.pain p   { font-size: .7rem; color: var(--muted); line-height: 1.4; }
+.pain .cost { font-size: .63rem; color: var(--gold); font-style: italic; margin-top: .18em; }
+
+/* ── Flow bar ───────────────────────────────────────────────────── */
+.flow { display: flex; align-items: stretch; margin: .5em 0; }
+.flow-step {
+  flex: 1;
+  text-align: center;
+  padding: .6em .35em;
+  border: 1px solid var(--rule);
+  background: var(--tint);
+}
+.flow-step .sn {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--red);
+  display: block;
+  line-height: 1;
+}
+.flow-step .sl { font-size: .75rem; font-weight: 600; color: var(--ink); display: block; margin: .1em 0; }
+.flow-step .ss { font-size: .62rem; color: var(--muted); font-style: italic; }
+.flow-arr { font-size: .9rem; color: var(--rule); padding: 0 .18em; display: flex; align-items: center; }
+
+/* ── Feature grid ───────────────────────────────────────────────── */
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .75em 1em;
+  flex: 1;
+}
+.feat { border-top: 2px solid var(--ink); padding: .5em 0 0; }
+.feat-icon { font-size: 1rem; margin-bottom: .25em; }
+.feat h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: .18em;
+}
+.feat p { font-size: .7rem; color: var(--muted); line-height: 1.42; }
+
+/* ── Layer rows ─────────────────────────────────────────────────── */
+.layer {
+  display: grid;
+  grid-template-columns: 1.8em 1fr 1fr;
+  gap: .5em 1.2em;
+  align-items: start;
+  padding: .6em 0;
+  border-bottom: 1px solid var(--rule);
+}
+.layer-n {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--rule);
+  line-height: 1.1;
+}
+.layer h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: .18em;
+}
+.layer p { font-size: .76rem; color: var(--ink-light); line-height: 1.5; }
+.layer .note { font-size: .68rem; color: var(--gold); font-style: italic; line-height: 1.45; }
+
+/* ── Segment list ───────────────────────────────────────────────── */
+.seg { padding: .45em 0; border-bottom: 1px solid var(--rule); }
+.seg:last-child { border-bottom: none; }
+.seg h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.seg p { font-size: .7rem; color: var(--muted); line-height: 1.4; margin-top: .12em; }
+
+/* ── Phase row ──────────────────────────────────────────────────── */
+.phase-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8em; margin-top: .6em; }
+.phase {
+  background: var(--tint);
+  border-left: 2px solid var(--rule);
+  padding: .55em .75em;
+}
+.phase .plbl { font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin-bottom: .2em; }
+.phase p { font-size: .7rem; color: var(--muted); line-height: 1.5; }
+
+/* ── Summary grid ───────────────────────────────────────────────── */
+.sum-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1em 1.4em;
+  flex: 1;
+}
+.sum-card { border-top: 2px solid var(--ink); padding: .65em 0 0; }
+.sum-sec  { font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: .25em; }
+.sum-card h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: .3em;
+}
+.sum-card p { font-size: .71rem; color: var(--ink-light); line-height: 1.55; }
+
+/* ── Navigation dots ────────────────────────────────────────────── */
+#nav {
+  position: fixed;
+  bottom: 2.2vh;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1em;
+  align-items: center;
+  z-index: 100;
+}
+.dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--rule);
+  cursor: pointer;
+  transition: background .3s;
+}
+.dot.on { background: var(--ink); }
+
+/* ── Cover specific ─────────────────────────────────────────────── */
+.cover-wrap { max-width: 660px; margin: 0 auto; padding-top: 1.5vh; }
+.masthead {
+  text-align: center;
+  border-top: 1px solid var(--ink);
+  border-bottom: 3px double var(--ink);
+  padding: .55em 0;
+  margin-bottom: 1em;
+}
+.masthead .pub {
+  font-size: .58rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.masthead h1 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 3.6rem;
+  line-height: .96;
+  color: var(--ink);
+  margin: .15em 0;
+  letter-spacing: -.01em;
+}
+.masthead .sub {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--muted);
+}
+.toc-row {
+  display: flex;
+  align-items: baseline;
+  gap: .6em;
+  padding: .42em 0;
+  border-bottom: 1px dotted var(--rule);
+}
+.toc-row:last-child { border-bottom: none; }
+.toc-check { font-size: .8rem; color: var(--red); flex-shrink: 0; }
+.toc-num   { font-family: 'Playfair Display', serif; font-size: .62rem; color: var(--muted); flex-shrink: 0; width: 1.4em; }
+.toc-text  { font-size: .82rem; color: var(--ink); }
+.toc-dots  { flex: 1; border-bottom: 1px dotted var(--rule); margin: 0 .4em .2em; }
+.toc-pg    { font-family: 'Playfair Display', serif; font-size: .72rem; color: var(--muted); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div id="deck">
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 1 — COVER                                                 -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide active" data-n="1">
+  <div class="cover-wrap">
+    <div class="masthead">
+      <div class="pub">Product Idea Overview &ensp;·&ensp; June 2026</div>
+      <h1>Family<br>Budget<br>Assistant</h1>
+      <div class="sub">The household finance tool families actually deserve</div>
+    </div>
+
+    <div class="ornament" style="margin-bottom:.8em;">· &nbsp; · &nbsp; ·</div>
+
+    <div class="label" style="margin-bottom:.55em;">Contents</div>
+
+    <div class="toc-row">
+      <span class="toc-check">☑</span>
+      <span class="toc-num">I.</span>
+      <span class="toc-text">Target Customer</span>
+      <span class="toc-dots"></span>
+      <span class="toc-pg">2</span>
+    </div>
+    <div class="toc-row">
+      <span class="toc-check">☑</span>
+      <span class="toc-num">II.</span>
+      <span class="toc-text">Customer Pain Points &amp; Challenges</span>
+      <span class="toc-dots"></span>
+      <span class="toc-pg">3</span>
+    </div>
+    <div class="toc-row">
+      <span class="toc-check">☑</span>
+      <span class="toc-num">III.</span>
+      <span class="toc-text">How We Plan to Solve the Problem</span>
+      <span class="toc-dots"></span>
+      <span class="toc-pg">4</span>
+    </div>
+    <div class="toc-row">
+      <span class="toc-check">☑</span>
+      <span class="toc-num">IV.</span>
+      <span class="toc-text">Key Features</span>
+      <span class="toc-dots"></span>
+      <span class="toc-pg">5</span>
+    </div>
+    <div class="toc-row">
+      <span class="toc-check">☑</span>
+      <span class="toc-num">V.</span>
+      <span class="toc-text">Competitors in the Market</span>
+      <span class="toc-dots"></span>
+      <span class="toc-pg">6</span>
+    </div>
+    <div class="toc-row">
+      <span class="toc-check">☑</span>
+      <span class="toc-num">VI.</span>
+      <span class="toc-text">Existing Data &amp; Models for AI</span>
+      <span class="toc-dots"></span>
+      <span class="toc-pg">7</span>
+    </div>
+
+    <div style="margin-top:1.4em;text-align:center;">
+      <span style="font-size:.62rem;color:var(--muted);font-style:italic;">← → arrow keys to navigate &ensp;·&ensp; click left/right to advance</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 2 — TARGET CUSTOMER                                       -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide" data-n="2">
+  <div class="slide-header">
+    <span class="label">☑ &thinsp;I. Target Customer</span>
+    <span class="slide-brand">Family Budget Assistant</span>
+    <span class="slide-num">2 of 8</span>
+  </div>
+
+  <h2 style="margin-bottom:.18em;">"Morgan, 38" &mdash; The Household CFO</h2>
+  <hr class="rule" style="margin-bottom:.55em;">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2em;flex:1;align-content:start;">
+
+    <!-- Left -->
+    <div>
+      <p class="pull" style="font-size:1rem;margin-bottom:.8em;">
+        "She manages every account, reconciles every statement &mdash; and does it in a spreadsheet, every month, for two hours."
+      </p>
+
+      <div class="label" style="margin-bottom:.4em;">Primary Persona</div>
+      <div style="background:var(--tint);border:1px solid var(--rule);padding:.75em .9em;display:grid;grid-template-columns:1fr 1fr;gap:.55em .9em;">
+        <div>
+          <div class="label">Role</div>
+          <p style="font-size:.76rem;margin-top:.1em;">Parent; manages all household bills and accounts; financial co-ordinator</p>
+        </div>
+        <div>
+          <div class="label">Profile</div>
+          <p style="font-size:.76rem;margin-top:.1em;">$75K–$250K household income; US-first; 3–8 accounts across 2+ banks</p>
+        </div>
+        <div>
+          <div class="label">Behaviour</div>
+          <p style="font-size:.76rem;margin-top:.1em;">Already downloads CSV statements monthly; uses or has abandoned spreadsheets</p>
+        </div>
+        <div>
+          <div class="label">Key reluctance</div>
+          <p style="font-size:.76rem;margin-top:.1em;">Privacy-conscious; avoids linking bank credentials to third-party apps</p>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-n">45M</div>
+          <div class="stat-lbl">TAM &mdash; US dual-income households</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">12M</div>
+          <div class="stat-lbl">SAM &mdash; Actively budgeting</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">150K</div>
+          <div class="stat-lbl">SOM Year 3 &mdash; Paying households</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div>
+      <div class="label" style="margin-bottom:.45em;">Secondary Segments</div>
+      <div class="seg">
+        <h4>Partner / Co-Parent &mdash; &ldquo;Alex, 36&rdquo;</h4>
+        <p>Earns income; wants visibility, not admin work. Enters via household invite from Morgan. Free-tier user; premium upsell candidate.</p>
+      </div>
+      <div class="seg">
+        <h4>Mint Refugees</h4>
+        <p>20M+ users displaced when Mint shut down in January&nbsp;2024. No equivalent free, privacy-respecting replacement exists. Pre-qualified demand requiring no education.</p>
+      </div>
+      <div class="seg">
+        <h4>Budget-Sceptic New User &mdash; &ldquo;Jamie, 42&rdquo;</h4>
+        <p>Triggered by financial stress; intimidated by spreadsheets. Needs a fast first win. Acquired via SEO and&nbsp;Reddit r/personalfinance communities.</p>
+      </div>
+      <div class="seg">
+        <h4>Privacy-First Professionals</h4>
+        <p>Tech, healthcare, legal workers. Highest trust bar for financial data. Smallest segment; highest ARPU and lowest churn. Acquired via Hacker News and Product Hunt.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 3 — PAIN POINTS                                           -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide" data-n="3">
+  <div class="slide-header">
+    <span class="label">☑ &thinsp;II. Customer Pain Points</span>
+    <span class="slide-brand">Family Budget Assistant</span>
+    <span class="slide-num">3 of 8</span>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:1.5em;margin-bottom:.25em;">
+    <h2>Eight reasons families give up on budgeting</h2>
+    <span style="font-family:'Playfair Display',serif;font-style:italic;font-size:.82rem;color:var(--muted);white-space:nowrap;">&mdash; and why no existing tool solves them all</span>
+  </div>
+  <hr class="rule" style="margin-bottom:.55em;">
+
+  <div class="pain-grid">
+    <div class="pain">
+      <h4>Fragmented Data</h4>
+      <p>Statements scattered across email, bank portals, and separate card apps &mdash; a different login for every account.</p>
+      <div class="cost">⏱ 2+ hours/month of manual consolidation</div>
+    </div>
+    <div class="pain">
+      <h4>Manual Overhead</h4>
+      <p>Copy-paste into spreadsheets every month. Most families abandon the habit after two or three months.</p>
+      <div class="cost">High DIY churn; recurring abandonment</div>
+    </div>
+    <div class="pain">
+      <h4>Individual-First Tools</h4>
+      <p>Mint, YNAB, and Copilot all assume one person&rsquo;s finances. Partners are invisible or require a separate account.</p>
+      <div class="cost">Low household adoption; single-user churn</div>
+    </div>
+    <div class="pain">
+      <h4>Unrealistic Budgets</h4>
+      <p>Families guess category limits with no data. Most budgets fail by week two. Shame and tool abandonment follow.</p>
+      <div class="cost">Shame cycle → abandonment cycle</div>
+    </div>
+    <div class="pain">
+      <h4>No Conversational Access</h4>
+      <p>You cannot ask &ldquo;are we on track for vacation?&rdquo; and receive a grounded answer. You must decode charts yourself.</p>
+      <div class="cost">Dashboard becomes &ldquo;set and forget&rdquo;</div>
+    </div>
+    <div class="pain">
+      <h4>Privacy Anxiety</h4>
+      <p>Live bank API connections feel risky after data breaches. A real trust barrier prevents sign-up in a significant share of users.</p>
+      <div class="cost">30&ndash;40% drop-off at bank-link step</div>
+    </div>
+    <div class="pain">
+      <h4>Late Accountability</h4>
+      <p>Overspending is visible only at month-end, when behaviour cannot be changed. Reactive, never proactive.</p>
+      <div class="cost">Partner conflict; surprise bills</div>
+    </div>
+    <div class="pain">
+      <h4>Double-Counting</h4>
+      <p>Credit card payments counted as expenses in both the checking and card accounts &mdash; silently inflating spend data.</p>
+      <div class="cost">Erodes trust in the tool entirely</div>
+    </div>
+  </div>
+
+  <hr class="rule" style="margin-top:.65em;">
+  <div style="display:flex;gap:1.2em;align-items:baseline;margin-top:.45em;">
+    <span class="label" style="flex-shrink:0;">Five jobs-to-be-done:</span>
+    <span style="font-family:'Playfair Display',serif;font-style:italic;font-size:.78rem;color:var(--ink);">
+      1.&thinsp;Consolidate &ensp;&mdash;&ensp; 2.&thinsp;Understand &ensp;&mdash;&ensp; 3.&thinsp;Plan &ensp;&mdash;&ensp; 4.&thinsp;Monitor &ensp;&mdash;&ensp; 5.&thinsp;Align
+    </span>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 4 — SOLUTION                                              -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide" data-n="4">
+  <div class="slide-header">
+    <span class="label">☑ &thinsp;III. How We Plan to Solve the Problem</span>
+    <span class="slide-brand">Family Budget Assistant</span>
+    <span class="slide-num">4 of 8</span>
+  </div>
+
+  <h2 style="margin-bottom:.18em;">From chaos to clarity in under thirty minutes</h2>
+  <hr class="rule" style="margin-bottom:.5em;">
+
+  <div class="flow" style="margin-bottom:.6em;">
+    <div class="flow-step">
+      <span class="sn">1</span>
+      <span class="sl">Download</span>
+      <span class="ss">5 min/account</span>
+    </div>
+    <div class="flow-arr">&rarr;</div>
+    <div class="flow-step">
+      <span class="sn">2</span>
+      <span class="sl">Upload</span>
+      <span class="ss">No credentials</span>
+    </div>
+    <div class="flow-arr">&rarr;</div>
+    <div class="flow-step">
+      <span class="sn">3</span>
+      <span class="sl">Auto-Categorize</span>
+      <span class="ss">80%+ auto-tagged</span>
+    </div>
+    <div class="flow-arr">&rarr;</div>
+    <div class="flow-step">
+      <span class="sn">4</span>
+      <span class="sl">Budget Wizard</span>
+      <span class="ss">50/30/20 from data</span>
+    </div>
+    <div class="flow-arr">&rarr;</div>
+    <div class="flow-step">
+      <span class="sn">5</span>
+      <span class="sl">Ask the AI</span>
+      <span class="ss">&ldquo;Why is dining over?&rdquo;</span>
+    </div>
+  </div>
+
+  <div style="flex:1;overflow:hidden;">
+    <table class="etable">
+      <thead>
+        <tr>
+          <th style="width:16%;">Pain</th>
+          <th style="width:42%;">Our Solution</th>
+          <th style="width:42%;">Why It Works</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Fragmented data</td>
+          <td>Unified ledger across all accounts with automatic transfer detection</td>
+          <td>Single timeline; no double-counting; one source of truth for the household</td>
+        </tr>
+        <tr>
+          <td>Manual overhead</td>
+          <td>CSV / OFX / QFX import with saved column mappings and deduplication</td>
+          <td>Monthly ritual: 2 hours &rarr; under 20 minutes</td>
+        </tr>
+        <tr>
+          <td>Individual-first</td>
+          <td>Household workspace with Owner / Editor / Viewer roles and per-member transaction tags</td>
+          <td>Built for couples from day one &mdash; not retrofitted onto an individual product</td>
+        </tr>
+        <tr>
+          <td>Unrealistic budgets</td>
+          <td>Budget wizard using 3&ndash;6 month median spend within the 50/30/20 framework</td>
+          <td>Grounded in the household&rsquo;s actual data, not generic advice or guesswork</td>
+        </tr>
+        <tr>
+          <td>No Q&amp;A access</td>
+          <td>AI assistant using function calls over structured database queries</td>
+          <td>Real numbers; no hallucination; every answer is auditable and traceable</td>
+        </tr>
+        <tr>
+          <td>Privacy anxiety</td>
+          <td>File-only import; encrypted at rest; GDPR-style delete; no Plaid in MVP</td>
+          <td>No credentials ever stored or transmitted &mdash; not a policy statement, an architecture decision</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 5 — KEY FEATURES                                          -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide" data-n="5">
+  <div class="slide-header">
+    <span class="label">☑ &thinsp;IV. Key Features &mdash; MVP</span>
+    <span class="slide-brand">Family Budget Assistant</span>
+    <span class="slide-num">5 of 8</span>
+  </div>
+
+  <h2 style="margin-bottom:.18em;">Everything families need. Nothing they don&rsquo;t.</h2>
+  <hr class="rule" style="margin-bottom:.55em;">
+
+  <div class="feat-grid">
+    <div class="feat">
+      <div class="feat-icon">🏠</div>
+      <h4>Household Workspace</h4>
+      <p>Email + Google&nbsp;SSO; invite members with Owner, Editor, or Viewer roles; shared household view from day one</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📤</div>
+      <h4>Smart File Import</h4>
+      <p>CSV, OFX, QFX; column mapper; saved institution templates; preview before import; automatic deduplication</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📊</div>
+      <h4>Unified Ledger</h4>
+      <p>All accounts in one chronological timeline; bulk edit; per-member attribution tags; automatic transfer pairing</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🏷️</div>
+      <h4>AI Categorization</h4>
+      <p>Family-oriented category tree; rules engine learns from corrections; low-confidence review queue</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🧮</div>
+      <h4>Budget Wizard</h4>
+      <p>50/30/20 framing with per-category caps, proposed from 3&ndash;6 months of the household&rsquo;s real history</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">💬</div>
+      <h4>AI Budget Assistant</h4>
+      <p>Natural-language Q&amp;A over transactions, budgets, and goals via GPT-4o / Gemini with structured function calls</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔔</div>
+      <h4>Mid-Month Alerts</h4>
+      <p>Category pacing widgets; email alerts when categories reach 90% and 100% of budget threshold &mdash; before month-end</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">💎</div>
+      <h4>Freemium Model</h4>
+      <p>Six months of history free; premium unlocks full history and CSV/PDF export; no data selling, no advertising</p>
+    </div>
+  </div>
+
+  <hr class="rule" style="margin-top:.65em;">
+  <div style="display:flex;gap:.7em;margin-top:.45em;">
+    <div class="stat" style="padding:.38em;">
+      <div class="stat-n" style="font-size:1.15rem;">&lt;30m</div>
+      <div class="stat-lbl">First dashboard</div>
+    </div>
+    <div class="stat" style="padding:.38em;">
+      <div class="stat-n" style="font-size:1.15rem;">≥60%</div>
+      <div class="stat-lbl">Week-1 activation</div>
+    </div>
+    <div class="stat" style="padding:.38em;">
+      <div class="stat-n" style="font-size:1.15rem;">≥80%</div>
+      <div class="stat-lbl">Auto-categorization</div>
+    </div>
+    <div class="stat" style="padding:.38em;">
+      <div class="stat-n" style="font-size:1.15rem;">≥40%</div>
+      <div class="stat-lbl">90-day retention</div>
+    </div>
+    <div class="stat" style="padding:.38em;">
+      <div class="stat-n" style="font-size:1.15rem;">≥5%</div>
+      <div class="stat-lbl">Free &rarr; Premium</div>
+    </div>
+    <div class="stat" style="padding:.38em;">
+      <div class="stat-n" style="font-size:1.15rem;">≥3</div>
+      <div class="stat-lbl">AI queries/user/mo</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 6 — COMPETITIVE LANDSCAPE                                 -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide" data-n="6">
+  <div class="slide-header">
+    <span class="label">☑ &thinsp;V. Competitors in the Market</span>
+    <span class="slide-brand">Family Budget Assistant</span>
+    <span class="slide-num">6 of 8</span>
+  </div>
+
+  <h2 style="margin-bottom:.18em;">We own the white space no competitor occupies</h2>
+  <hr class="rule" style="margin-bottom:.55em;">
+
+  <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:2.2em;flex:1;align-content:start;">
+
+    <!-- Left: table -->
+    <div>
+      <table class="etable">
+        <thead>
+          <tr>
+            <th style="width:26%;">Product</th>
+            <th style="width:13%;">Price</th>
+            <th style="width:16%;">Household</th>
+            <th style="width:14%;">AI&nbsp;Q&amp;A</th>
+            <th style="width:14%;">File Import</th>
+            <th style="width:10%;">No Credentials</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="us">
+            <td>★&thinsp;Family Budget Assistant</td>
+            <td>Freemium</td>
+            <td class="yes">● Native</td>
+            <td class="yes">● Grounded</td>
+            <td class="yes">● Primary</td>
+            <td class="yes">● MVP</td>
+          </tr>
+          <tr>
+            <td>Monarch Money</td>
+            <td>$99/yr</td>
+            <td class="part">◐ Couples</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+          </tr>
+          <tr>
+            <td>YNAB</td>
+            <td>$109/yr</td>
+            <td class="part">◐ Shared</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+          </tr>
+          <tr>
+            <td>Copilot</td>
+            <td>~$95/yr</td>
+            <td class="no">○</td>
+            <td class="part">◐ Cat AI</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+          </tr>
+          <tr>
+            <td>Empower</td>
+            <td>Free</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+            <td class="no">○</td>
+          </tr>
+          <tr>
+            <td>Goodbudget</td>
+            <td>Free / $8</td>
+            <td class="part">◐ Limited</td>
+            <td class="no">○</td>
+            <td class="part">◐ Manual</td>
+            <td class="yes">●</td>
+          </tr>
+          <tr>
+            <td>Spreadsheets</td>
+            <td>Free</td>
+            <td class="part">◐ DIY</td>
+            <td class="no">○</td>
+            <td class="yes">●</td>
+            <td class="yes">●</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:.4em;">
+        <span class="label">Legend: </span>
+        <span style="font-size:.68rem;color:var(--muted);">● Yes &ensp; ◐ Partial &ensp; ○ No</span>
+      </div>
+
+      <div class="pull" style="font-size:.88rem;margin-top:.9em;">
+        "The upper-right quadrant &mdash; household-native and high automation &mdash; has no incumbent. That is the white space we own."
+      </div>
+    </div>
+
+    <!-- Right: competitor gaps -->
+    <div>
+      <div class="label" style="margin-bottom:.45em;">Key Competitor Gaps</div>
+      <div class="seg">
+        <h4>Monarch Money &mdash; Closest Threat</h4>
+        <p>Plaid-first architecture; no conversational AI; individual transaction philosophy. Our wedge: privacy-safe import + grounded AI Q&amp;A + deeper family model.</p>
+      </div>
+      <div class="seg">
+        <h4>YNAB &mdash; Methodology Leader</h4>
+        <p>Zero-based methodology is prescriptive; steep learning curve; no AI assistant; requires bank link. Our wedge: flexible 50/30/20; faster time-to-value; ask questions, don&rsquo;t read charts.</p>
+      </div>
+      <div class="seg">
+        <h4>Copilot &mdash; AI-Adjacent</h4>
+        <p>iOS/Mac only; no household sharing; no budget Q&amp;A. Our wedge: cross-platform; family-native; conversational layer over budget data.</p>
+      </div>
+      <div class="seg">
+        <h4>Mint (defunct, Jan&nbsp;2024) &mdash; Ghost Competitor</h4>
+        <p>20M+ users proved demand for free aggregated budgeting. Lesson: freemium with premium export; users pay when their data is not sold.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 7 — AI & DATA STRATEGY                                    -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide" data-n="7">
+  <div class="slide-header">
+    <span class="label">☑ &thinsp;VI. Existing Data &amp; Models for AI</span>
+    <span class="slide-brand">Family Budget Assistant</span>
+    <span class="slide-num">7 of 8</span>
+  </div>
+
+  <h2 style="margin-bottom:.15em;">Do not start from scratch &mdash; leverage what exists</h2>
+  <hr class="rule" style="margin-bottom:.4em;">
+
+  <div class="layer">
+    <div class="layer-n">1</div>
+    <div>
+      <h4>Transaction Categorization</h4>
+      <p>Pre-trained DistilBERT fine-tuned on 68K US bank strings (<em>HuggingFace: us-bank-transaction-categories-v2</em>, 99.9% validation accuracy). Also: 4.5M+ synthetic transactions for augmentation and a lightweight TF-IDF baseline requiring no GPU.</p>
+    </div>
+    <div class="note">MVP path: Rules engine first &rarr; fine-tuned classifier &rarr; review queue for confidence&nbsp;&lt;&nbsp;0.85. No GPU or ML team required at launch.</div>
+  </div>
+
+  <div class="layer">
+    <div class="layer-n">2</div>
+    <div>
+      <h4>AI Budget Q&amp;A &mdash; GPT-4o / Gemini</h4>
+      <p>Foundation LLM with structured function calls over the household database: <code>get_budget_status</code>, <code>get_transactions</code>, <code>get_spending_summary</code>, <code>get_goal_progress</code>. The tool layer is our IP &mdash; not the base model.</p>
+    </div>
+    <div class="note">No fine-tuning needed at MVP. Function-calling achieves grounding without custom training. Cost: ~$0.01&ndash;0.05/query vs. $0.50+ with raw CSV in prompt.</div>
+  </div>
+
+  <div class="layer">
+    <div class="layer-n">3</div>
+    <div>
+      <h4>Budget Recommendation Engine</h4>
+      <p>Median/trimmed-mean per category from the user&rsquo;s own 3&ndash;6 month history, framed within the 50/30/20 (Needs / Wants / Savings) structure. No external model, no training data required.</p>
+    </div>
+    <div class="note">Statistically sound, fully explainable, and zero incremental cost. IQR-based outlier detection flags one-time medical or travel spikes in Phase&nbsp;2.</div>
+  </div>
+
+  <div class="layer" style="border-bottom:none;">
+    <div class="layer-n">4</div>
+    <div>
+      <h4>Bank File Parsing</h4>
+      <p>Open-source <em>ofxparse</em> / <em>ofx-js</em> for OFX/QFX format parsing. Rule-based CSV column mapper with saved templates for the top ten US banks (Chase, BofA, Citi, Wells Fargo, and others).</p>
+    </div>
+    <div class="note">No training required. Community-contributed institution templates expand coverage in Phase&nbsp;2, creating a network-effect moat.</div>
+  </div>
+
+  <div class="phase-row">
+    <div class="phase">
+      <div class="plbl">MVP &mdash; No Training from Scratch</div>
+      <p>Rules + pre-trained DistilBERT &middot; GPT-4o/Gemini function calling &middot; Statistical budget wizard &middot; Open-source OFX parsers</p>
+    </div>
+    <div class="phase">
+      <div class="plbl">Phase 2 &mdash; Targeted Fine-Tuning</div>
+      <p>Classifier fine-tuned on anonymised corrections &middot; Merchant normalisation (Foursquare + household data) &middot; Recurring detection</p>
+    </div>
+    <div class="phase">
+      <div class="plbl">Phase 3+ &mdash; Optional Expansion</div>
+      <p>Household embedding cache &middot; Local/offline LLM for privacy-first premium tier &middot; Optional Plaid bank link &middot; Tax summary AI</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 8 — SUMMARY                                               -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<section class="slide" data-n="8">
+  <div style="max-width:950px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding-top:.8vh;">
+
+    <div style="text-align:center;margin-bottom:.9em;">
+      <div class="label" style="margin-bottom:.3em;">Summary</div>
+      <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:1.45rem;line-height:1.25;color:var(--ink);">
+        &ldquo;The first household finance tool that understands your whole family&rsquo;s money<br>&mdash; without ever requiring you to hand over your bank login.&rdquo;
+      </div>
+      <hr class="rule" style="margin:.7em auto;width:55%;">
+    </div>
+
+    <div class="sum-grid" style="flex:1;">
+      <div class="sum-card">
+        <div class="sum-sec">I. Target Customer</div>
+        <h4>The Household CFO</h4>
+        <p>Morgan, 38: manages 3&ndash;8 accounts across 2+ banks; privacy-conscious; spends 2&nbsp;hrs/month on spreadsheets. She already downloads CSVs monthly &mdash; we change nothing except making it faster and far more useful.</p>
+      </div>
+      <div class="sum-card">
+        <div class="sum-sec">II. Pain Points</div>
+        <h4>Eight Unresolved Problems</h4>
+        <p>Fragmented data, manual overhead, individual-first tools, unrealistic budgets, no Q&amp;A access, privacy anxiety, late accountability, and double-counting &mdash; no single competitor addresses all eight simultaneously.</p>
+      </div>
+      <div class="sum-card">
+        <div class="sum-sec">III. Solution</div>
+        <h4>File Import &rarr; AI Q&amp;A in &lt;30&thinsp;min</h4>
+        <p>Upload bank statements, auto-categorize, set a budget grounded in real data, and ask plain-English questions &mdash; all without handing over credentials. No competitor combines all three pillars.</p>
+      </div>
+      <div class="sum-card">
+        <div class="sum-sec">IV. Key Features</div>
+        <h4>Eight MVP Feature Areas</h4>
+        <p>Household workspace, smart file import, unified ledger, AI categorization, budget wizard, AI Q&amp;A, mid-month alerts, and freemium model. Targets: &lt;30m first dashboard; ≥80% auto-categorization; ≥40% 90-day retention.</p>
+      </div>
+      <div class="sum-card">
+        <div class="sum-sec">V. Competitive Position</div>
+        <h4>Upper-Right Quadrant &mdash; Unoccupied</h4>
+        <p>Household-native + high automation + privacy-safe import. No incumbent combines all three. Monarch lacks AI Q&amp;A. YNAB requires bank link. Copilot is individual-first. Goodbudget is manual-entry only.</p>
+      </div>
+      <div class="sum-card">
+        <div class="sum-sec">VI. AI &amp; Data Strategy</div>
+        <h4>No Training from Scratch</h4>
+        <p>Pre-trained DistilBERT for categorisation; GPT-4o/Gemini function calling for Q&amp;A (no fine-tuning at MVP); statistical median for budget recommendations. The structured tool layer is our IP &mdash; not the base model.</p>
+      </div>
+    </div>
+
+    <div style="text-align:center;border-top:1px solid var(--rule);padding-top:.55em;margin-top:.7em;">
+      <span style="font-size:.62rem;color:var(--muted);font-style:italic;">saudamini@gmail.com &ensp;&middot;&ensp; Family Budget Assistant &ensp;&middot;&ensp; 2026</span>
+    </div>
+
+  </div>
+</section>
+
+</div><!-- #deck -->
+
+<!-- Navigation dots -->
+<div id="nav">
+  <div class="dot on"  data-i="0"></div>
+  <div class="dot"     data-i="1"></div>
+  <div class="dot"     data-i="2"></div>
+  <div class="dot"     data-i="3"></div>
+  <div class="dot"     data-i="4"></div>
+  <div class="dot"     data-i="5"></div>
+  <div class="dot"     data-i="6"></div>
+  <div class="dot"     data-i="7"></div>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const dots   = document.querySelectorAll('.dot');
+let cur = 0;
+
+function go(n) {
+  slides[cur].classList.remove('active');
+  dots[cur].classList.remove('on');
+  cur = Math.max(0, Math.min(n, slides.length - 1));
+  slides[cur].classList.add('active');
+  dots[cur].classList.add('on');
+}
+
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown',' '].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+  if (['ArrowLeft','ArrowUp'].includes(e.key))         { e.preventDefault(); go(cur - 1); }
+});
+
+document.addEventListener('click', e => {
+  if (e.target.closest('#nav')) return;
+  go(e.clientX < window.innerWidth / 2 ? cur - 1 : cur + 1);
+});
+
+dots.forEach(d => d.addEventListener('click', e => { e.stopPropagation(); go(+d.dataset.i); }));
+</script>
+</body>
+</html>
