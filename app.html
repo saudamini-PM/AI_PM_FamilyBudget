@@ -223,6 +223,7 @@ let S = loadState() || {
   budget: {},
   goals: [],
   chatHistory: [],
+  customCategories: [],
   onboardingDone: false,
 };
 
@@ -247,10 +248,12 @@ const fmt = {
   pct: v => Math.round(v)+'%',
 };
 
-function cat(id){ return CATEGORIES.find(c=>c.id===id)||{id:'other',name:'Other',icon:'📦',color:'#666'}; }
+// Built-in + household custom categories merged. Always call this instead of CATEGORIES directly.
+function allCategories(){ return [...CATEGORIES, ...(S.customCategories||[])]; }
+function cat(id){ return allCategories().find(c=>c.id===id)||{id:'other',name:'Other',icon:'📦',color:'#666'}; }
 function catBadge(id){
   const c = cat(id);
-  return `<span class="badge badge-${id}">${c.icon} ${c.name}</span>`;
+  return `<span class="badge badge-${escapeHtml(id)}">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</span>`;
 }
 function uid(){ return 't'+(Date.now()).toString(36)+Math.random().toString(36).slice(2,6); }
 
@@ -284,7 +287,7 @@ function toolGetSpendingSummary({period, category_name}){
 
   const expenses = filtered.filter(t=>t.type==='expense');
   if(category_name){
-    const c = CATEGORIES.find(c=>c.name.toLowerCase().includes(category_name.toLowerCase()));
+    const c = allCategories().find(c=>c.name.toLowerCase().includes(category_name.toLowerCase()));
     if(c){
       const amt = spendByCat(expenses, c.id);
       return {category:c.name, total:amt.toFixed(2), transactions_count:expenses.filter(t=>t.category===c.id).length};
@@ -292,7 +295,7 @@ function toolGetSpendingSummary({period, category_name}){
     return {error:'Category not found: '+category_name};
   }
   const bycat = {};
-  CATEGORIES.filter(c=>c.bucket!=='income'&&c.bucket!=='transfer').forEach(c=>{
+  allCategories().filter(c=>c.bucket!=='income'&&c.bucket!=='transfer').forEach(c=>{
     const amt = spendByCat(expenses, c.id);
     if(amt>0) bycat[c.name] = amt.toFixed(2);
   });
@@ -343,12 +346,13 @@ function toolGetTransactions({start_date,end_date,category_name,limit}){
   if(start_date) txns=txns.filter(t=>t.date>=start_date);
   if(end_date)   txns=txns.filter(t=>t.date<=end_date);
   if(category_name){
-    const c=CATEGORIES.find(c=>c.name.toLowerCase().includes(category_name.toLowerCase()));
+    const c=allCategories().find(c=>c.name.toLowerCase().includes(category_name.toLowerCase()));
     if(c) txns=txns.filter(t=>t.category===c.id);
   }
   txns.sort((a,b)=>b.date.localeCompare(a.date));
   const top = txns.slice(0,Math.min(limit||10,20));
-  return {count:top.length, transactions:top.map(t=>({date:t.date,payee:t.payee,amount:(-Math.abs(t.amount)).toFixed(2),category:cat(t.category).name}))};
+  // notes omitted — may contain member names; payees scrubbed of personal-name patterns
+  return {count:top.length, transactions:top.map(t=>({date:t.date,payee:PII_SCRUBBER.payee(t.payee),amount:(-Math.abs(t.amount)).toFixed(2),category:cat(t.category).name}))};
 }
 
 const AI_TOOLS = [{
@@ -395,15 +399,38 @@ function executeTool(name, args){
 }
 
 // ═══════════════════════════════════════════════
+// PII SCRUBBER — strips personal data before it
+// leaves the browser toward the Gemini API.
+// Rule: aggregate numbers are fine; names are not.
+// ═══════════════════════════════════════════════
+const PII_SCRUBBER = {
+  // Replace personal-name titles + the word that follows ("Mrs. Kim" → "[Person]")
+  _titleRe: /\b(Mrs?|Ms|Dr|Prof|Rev|Hon)\.?\s+[A-Z][a-z]+/g,
+
+  payee(text) {
+    if (!text) return text;
+    return text.replace(this._titleRe, '[Person]');
+  },
+
+  // Returns ["Member 1", "Member 2", ...] — actual names never sent to API
+  memberTokens(members) {
+    return (members || []).map((_, i) => `Member ${i + 1}`);
+  },
+};
+
+// ═══════════════════════════════════════════════
 // GEMINI INTEGRATION
 // ═══════════════════════════════════════════════
-const SYSTEM_PROMPT = () => `You are a friendly budget assistant for the ${S.household?.name||'household'} family.
+const SYSTEM_PROMPT = () => {
+  const memberCount = (S.household?.members || []).length;
+  const memberList  = PII_SCRUBBER.memberTokens(S.household?.members).join(', ');
+  return `You are a friendly budget assistant for a household (${memberCount} member${memberCount !== 1 ? 's' : ''}: ${memberList}).
 Today is June 18, 2024. The current budget period is June 2024 (18 days elapsed of 30).
-Members: ${(S.household?.members||[]).join(', ')}.
 Always use a tool to answer financial questions — never invent numbers.
 Keep answers concise (2–4 sentences) and in plain English, like explaining to a friend.
 Be warm, friendly, and encouraging. Use the family's actual data.
 This is not financial advice — you are summarising their own data.`;
+};
 
 async function callGemini(contents){
   const key = getGeminiKey();
@@ -487,7 +514,6 @@ function safeSetHTML(el, html){
 function render(){
   const root = document.getElementById('root');
   if(!S.user){ safeSetHTML(root, renderAuth()); attachAuthEvents(); return; }
-  if(!getGeminiKey()){ safeSetHTML(root, renderApiSetup()); attachApiSetupEvents(); return; }
   if(!S.onboardingDone){ safeSetHTML(root, renderOnboarding()); attachOnboardingEvents(); return; }
 
   const views = {dashboard:renderDashboard,transactions:renderTransactions,import:renderImport,budget:renderBudget,chat:renderChat};
@@ -880,7 +906,7 @@ function renderDashboard(){
   const net = income - expenses;
   const bud = S.budget;
 
-  const pacingCats = CATEGORIES.filter(c=>c.bucket!=='income'&&c.bucket!=='transfer'&&c.bucket!=='other'&&bud[c.id]>0);
+  const pacingCats = allCategories().filter(c=>c.bucket!=='income'&&c.bucket!=='transfer'&&c.bucket!=='other'&&bud[c.id]>0);
   const recent = [...S.transactions].filter(t=>t.type!=='transfer').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
   const pendingCount = S.transactions.filter(t=>t.status==='pending_review').length;
 
@@ -935,7 +961,7 @@ function renderDashboard(){
             <div>
               <div class="flex items-center justify-between mb-1.5">
                 <div class="flex items-center gap-2 text-sm font-600">
-                  <span>${c.icon}</span><span>${c.name}</span>
+                  <span>${escapeHtml(c.icon)}</span><span>${escapeHtml(c.name)}</span>
                   ${isOver?'<span class="text-coral text-xs font-800">⚠️ Over</span>':''}
                 </div>
                 <div class="text-sm font-700 ${isOver?'text-coral':'text-ink/60'}">${fmt.currencyAbs(spent)} <span class="text-ink/40 font-500">/ ${fmt.currencyAbs(limit)}</span></div>
@@ -1035,12 +1061,52 @@ function attachDashboardEvents(){}
 let txnFilter = {search:'',category:'',status:'all'};
 let txnSelected = new Set();
 
-function renderTransactions(){
+function getFilteredTxns(){
   let txns = [...S.transactions].sort((a,b)=>b.date.localeCompare(a.date));
-  if(txnFilter.search) txns=txns.filter(t=>t.payee.toLowerCase().includes(txnFilter.search.toLowerCase()));
+  if(txnFilter.search) txns=txns.filter(t=>t.payee.toLowerCase().includes(txnFilter.search.toLowerCase())||t.notes?.toLowerCase().includes(txnFilter.search.toLowerCase()));
   if(txnFilter.category) txns=txns.filter(t=>t.category===txnFilter.category);
   if(txnFilter.status==='pending') txns=txns.filter(t=>t.status==='pending_review');
   else if(txnFilter.status==='confirmed') txns=txns.filter(t=>t.status==='confirmed');
+  return txns;
+}
+
+// Partial update: replaces only the rows and count without touching the search input,
+// so the input keeps focus and cursor position on every keystroke.
+// Uses safeSetHTML (same innerHTML wrapper used everywhere in this app); content is
+// safe because renderTxnRowsHTML escapes all user-supplied values via escapeHtml().
+function refreshTxnRows(){
+  const rowsEl  = document.getElementById('txn-rows');
+  const countEl = document.getElementById('txn-count');
+  if(!rowsEl) return;
+  const txns = getFilteredTxns();
+  safeSetHTML(rowsEl, renderTxnRowsHTML(txns));
+  if(countEl) countEl.textContent = txns.length + ' transaction' + (txns.length!==1?'s':'');
+  attachTxnRowEvents();
+}
+
+function renderTxnRowsHTML(txns){
+  if(txns.length===0) return `<div class="py-12 text-center text-ink/40"><div class="text-4xl mb-2">🔍</div><div>No transactions found</div></div>`;
+  return txns.map(t=>{
+    const acc=S.accounts.find(a=>a.id===t.account)||{name:t.account};
+    const isPending = t.status==='pending_review';
+    return `
+    <div class="txn-row grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm ${txnSelected.has(t.id)?'selected':''} ${isPending?'bg-amber/5':''}">
+      <div class="col-span-1"><input type="checkbox" class="txn-check rounded" data-id="${t.id}" ${txnSelected.has(t.id)?'checked':''}></div>
+      <div class="col-span-2 text-ink/60 whitespace-nowrap">${fmt.dateShort(t.date)}${isPending?` <span class="badge bg-amber/20 text-amber-dark text-[10px] ml-1">Review</span>`:''}</div>
+      <div class="col-span-4 font-500 truncate">${escapeHtml(t.payee)}</div>
+      <div class="col-span-2">
+        <select class="cat-select text-xs border border-cream-dark/60 rounded-lg px-1.5 py-1 bg-cream" data-id="${t.id}">
+          ${allCategories().map(c=>`<option value="${escapeHtml(c.id)}" ${t.category===c.id?'selected':''}>${escapeHtml(c.icon)} ${escapeHtml(c.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="col-span-2 text-ink/50 text-xs truncate">${escapeHtml(acc.name)}</div>
+      <div class="col-span-1 text-right font-700 ${t.amount<0?'text-coral':'text-sage'}">${fmt.currency(t.amount)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTransactions(){
+  const txns = getFilteredTxns();
   const pendingCount = S.transactions.filter(t=>t.status==='pending_review').length;
 
   return `
@@ -1052,10 +1118,10 @@ function renderTransactions(){
 
     <!-- Filters -->
     <div class="card p-4 flex flex-wrap gap-3 items-center">
-      <input id="txn-search" type="text" class="input flex-1 min-w-48" placeholder="🔍  Search payee..." value="${txnFilter.search}" oninput="txnFilter.search=this.value;render()">
+      <input id="txn-search" type="text" class="input flex-1 min-w-48" placeholder="🔍  Search payee..." value="${txnFilter.search}" oninput="txnFilter.search=this.value;refreshTxnRows()">
       <select id="txn-cat" class="select w-44" onchange="txnFilter.category=this.value;render()">
         <option value="">All categories</option>
-        ${CATEGORIES.map(c=>`<option value="${c.id}" ${txnFilter.category===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}
+        ${allCategories().map(c=>`<option value="${escapeHtml(c.id)}" ${txnFilter.category===c.id?'selected':''}>${escapeHtml(c.icon)} ${escapeHtml(c.name)}</option>`).join('')}
       </select>
       <div class="flex gap-1 bg-cream rounded-xl p-1">
         ${[['all','All'],['pending','Needs Review'],['confirmed','Confirmed']].map(([v,l])=>`
@@ -1069,7 +1135,7 @@ function renderTransactions(){
       <span class="text-ink/60 text-sm">Assign category:</span>
       <select id="bulk-cat" class="select w-44 text-sm py-2">
         <option value="">Choose category...</option>
-        ${CATEGORIES.filter(c=>c.bucket!=='income'&&c.bucket!=='transfer').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+        ${allCategories().filter(c=>c.bucket!=='income'&&c.bucket!=='transfer').map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</option>`).join('')}
       </select>
       <button id="bulk-apply" class="btn-primary text-sm py-2 px-3">Apply</button>
       <button onclick="txnSelected.clear();render()" class="btn-ghost text-sm py-2">Cancel</button>
@@ -1085,36 +1151,13 @@ function renderTransactions(){
         <div class="col-span-2">Account</div>
         <div class="col-span-1 text-right">Amount</div>
       </div>
-      <div class="divide-y divide-cream-dark/40">
-        ${txns.length===0?`<div class="py-12 text-center text-ink/40"><div class="text-4xl mb-2">🔍</div><div>No transactions found</div></div>`:
-        txns.map(t=>{
-          const acc=S.accounts.find(a=>a.id===t.account)||{name:t.account};
-          const isPending = t.status==='pending_review';
-          return `
-          <div class="txn-row grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm ${txnSelected.has(t.id)?'selected':''} ${isPending?'bg-amber/5':''}">
-            <div class="col-span-1"><input type="checkbox" class="txn-check rounded" data-id="${t.id}" ${txnSelected.has(t.id)?'checked':''}></div>
-            <div class="col-span-2 text-ink/60 whitespace-nowrap">${fmt.dateShort(t.date)}${isPending?` <span class="badge bg-amber/20 text-amber-dark text-[10px] ml-1">Review</span>`:''}</div>
-            <div class="col-span-4 font-500 truncate">${escapeHtml(t.payee)}</div>
-            <div class="col-span-2">
-              <select class="cat-select text-xs border border-cream-dark/60 rounded-lg px-1.5 py-1 bg-cream" data-id="${t.id}">
-                ${CATEGORIES.map(c=>`<option value="${c.id}" ${t.category===c.id?'selected':''}>${c.icon} ${c.name}</option>`).join('')}
-              </select>
-            </div>
-            <div class="col-span-2 text-ink/50 text-xs truncate">${escapeHtml(acc.name)}</div>
-            <div class="col-span-1 text-right font-700 ${t.amount<0?'text-coral':'text-sage'}">${fmt.currency(t.amount)}</div>
-          </div>`;
-        }).join('')}
-      </div>
+      <div id="txn-rows" class="divide-y divide-cream-dark/40">${renderTxnRowsHTML(txns)}</div>
     </div>
-    <div class="text-xs text-ink/40 text-center">${txns.length} transactions</div>
+    <div id="txn-count" class="text-xs text-ink/40 text-center">${txns.length} transaction${txns.length!==1?'s':''}</div>
   </div>`;
 }
-function attachTransactionEvents(){
-  document.getElementById('select-all')?.addEventListener('change',function(){
-    const checks = document.querySelectorAll('.txn-check');
-    checks.forEach(c=>{ if(this.checked) txnSelected.add(c.dataset.id); else txnSelected.delete(c.dataset.id); });
-    render();
-  });
+// Row-level events only — called both on full render and after refreshTxnRows().
+function attachTxnRowEvents(){
   document.querySelectorAll('.txn-check').forEach(c=>{
     c.addEventListener('change',function(){
       if(this.checked) txnSelected.add(this.dataset.id); else txnSelected.delete(this.dataset.id);
@@ -1127,6 +1170,15 @@ function attachTransactionEvents(){
       if(idx>=0){ S.transactions[idx].category=this.value; S.transactions[idx].status='confirmed'; saveState(); }
     });
   });
+}
+
+function attachTransactionEvents(){
+  document.getElementById('select-all')?.addEventListener('change',function(){
+    const checks = document.querySelectorAll('.txn-check');
+    checks.forEach(c=>{ if(this.checked) txnSelected.add(c.dataset.id); else txnSelected.delete(c.dataset.id); });
+    render();
+  });
+  attachTxnRowEvents();
   document.getElementById('bulk-apply')?.addEventListener('click',function(){
     const newCat = document.getElementById('bulk-cat').value;
     if(!newCat) return;
@@ -1330,9 +1382,9 @@ function renderBudget(){
   const prevTxns= txnsByMonth(S.transactions,CUR_Y,CUR_M-1);
   const bud = S.budget;
 
-  const needsCats  = CATEGORIES.filter(c=>c.bucket==='needs');
-  const wantsCats  = CATEGORIES.filter(c=>c.bucket==='wants');
-  const savingsCats= CATEGORIES.filter(c=>c.bucket==='savings');
+  const needsCats  = allCategories().filter(c=>c.bucket==='needs');
+  const wantsCats  = allCategories().filter(c=>c.bucket==='wants');
+  const savingsCats= allCategories().filter(c=>c.bucket==='savings');
   const totalBudget = Object.values(bud).reduce((s,v)=>s+(v||0),0);
   const income = 8400;
 
@@ -1346,7 +1398,7 @@ function renderBudget(){
     const suggested = lastMon>0?Math.ceil(lastMon/10)*10:bud[c.id]||0;
     return `
     <tr class="border-b border-cream-dark/40">
-      <td class="py-3 px-4"><span class="font-600">${c.icon} ${c.name}</span></td>
+      <td class="py-3 px-4"><span class="font-600">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</span></td>
       <td class="py-3 px-4 text-ink/60 text-sm">${lastMon>0?fmt.currencyAbs(lastMon):'—'}</td>
       <td class="py-3 px-4 text-sage font-600 text-sm">${spent>0?fmt.currencyAbs(spent):'$0'}</td>
       <td class="py-3 px-4">
@@ -1362,7 +1414,12 @@ function renderBudget(){
   <div class="space-y-6 max-w-4xl">
     <div class="flex items-center justify-between">
       <div class="fredoka text-2xl font-bold">Budget Setup</div>
-      <div class="text-sm text-ink/60">June 2024</div>
+      <div class="flex items-center gap-3">
+        <div class="text-sm text-ink/60">June 2024</div>
+        <button class="add-cat-btn flex items-center gap-1.5 bg-coral text-white text-sm font-700 px-4 py-2 rounded-xl hover:bg-coral/85 transition-colors" data-bucket="wants">
+          ＋ Add Category
+        </button>
+      </div>
     </div>
 
     <!-- 50/30/20 summary -->
@@ -1380,7 +1437,7 @@ function renderBudget(){
       }).join('')}
     </div>
 
-    <!-- Category tables -->
+    <!-- Category tables — built-in + custom rows per bucket -->
     ${[['Needs — Essentials','needs',needsCats],['Wants — Lifestyle','wants',wantsCats],['Savings & Debt','savings',savingsCats]].map(([title,bucket,cats])=>`
     <div class="card p-0 overflow-hidden">
       <div class="table-header flex justify-between items-center">
@@ -1391,7 +1448,41 @@ function renderBudget(){
         <thead><tr class="table-header"><td class="col-span-3">Category</td><td>Last month</td><td>This month</td><td>Budget limit</td></tr></thead>
         <tbody>${cats.map(catRow).join('')}</tbody>
       </table>
+      <div class="px-4 py-2.5 border-t border-cream-dark/30 bg-cream/40">
+        <button class="add-cat-btn flex items-center gap-1.5 text-sm text-coral font-700 border border-coral/30 bg-white rounded-lg px-3 py-1.5 hover:bg-coral hover:text-white hover:border-coral transition-all" data-bucket="${bucket}">
+          ＋ Add custom ${title.split('—')[0].trim().toLowerCase()} category
+        </button>
+      </div>
     </div>`).join('')}
+
+    <!-- Custom categories manage panel -->
+    ${(S.customCategories||[]).length > 0 ? `
+    <div class="card p-0 overflow-hidden">
+      <div class="table-header flex justify-between items-center">
+        <span>✏️ Custom Categories</span>
+        <span class="normal-case font-500 text-xs">👨‍👩‍👧 Shared with all household members</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="table-header"><td>Category</td><td>Bucket</td><td>Added by</td><td>Budget limit</td><td></td></tr></thead>
+        <tbody>
+          ${(S.customCategories||[]).map(c=>`
+          <tr class="border-b border-cream-dark/40">
+            <td class="py-3 px-4"><span class="font-600">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</span></td>
+            <td class="py-3 px-4 text-ink/60 capitalize">${c.bucket}</td>
+            <td class="py-3 px-4 text-ink/50 text-xs">${escapeHtml(c.createdBy||'You')}</td>
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-2">
+                <span class="text-ink/50 text-sm">$</span>
+                <input type="number" class="budget-input w-24 border border-cream-dark/60 rounded-lg px-2 py-1.5 text-sm font-700 focus:border-coral outline-none" data-cat="${c.id}" value="${bud[c.id]||0}" min="0" step="10">
+              </div>
+            </td>
+            <td class="py-3 px-4">
+              <button class="del-cat-btn text-ink/30 hover:text-coral transition-colors text-lg leading-none" data-cat-id="${c.id}" title="Delete category">×</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
 
     <div class="flex items-center justify-between p-4 bg-cream rounded-xl">
       <div class="text-sm">
@@ -1403,13 +1494,93 @@ function renderBudget(){
       </div>
       <button id="save-budget" class="btn-primary">Save Budget ✓</button>
     </div>
+  </div>
+
+  <!-- Custom category modal -->
+  <div id="custom-cat-overlay" class="modal-overlay hidden" onclick="if(event.target===this)closeCatModal()">
+    <div class="modal max-w-md w-full" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5">
+        <div class="fredoka text-xl font-bold">Add Custom Category</div>
+        <button onclick="closeCatModal()" class="text-ink/30 hover:text-ink text-2xl leading-none">&times;</button>
+      </div>
+
+      <label class="block text-sm font-700 text-ink/70 mb-1.5">Bucket</label>
+      <select id="new-cat-bucket" class="select w-full mb-4">
+        <option value="needs">Needs (essentials)</option>
+        <option value="wants">Wants (lifestyle)</option>
+        <option value="savings">Savings &amp; debt</option>
+      </select>
+
+      <label class="block text-sm font-700 text-ink/70 mb-1.5">Category name</label>
+      <input id="new-cat-name" class="input mb-4" placeholder="e.g. Pet Care, Gym, School Fees" maxlength="30" oninput="document.getElementById('cat-error').classList.add('hidden')">
+
+      <label class="block text-sm font-700 text-ink/70 mb-2">Icon</label>
+      <div class="flex flex-wrap gap-2 mb-1">
+        ${['🐾','🎓','📚','🏋️','🌱','🎮','🎵','🎨','🧘','💊','🛠️','✈️','🎁','☕','🚴','💻','🎂','🏊','🎯','🧹','🍷','🏕️','🧸','📷','🌮','👔','⚽','🌸'].map(e=>`<button type="button" class="icon-pick-btn text-xl w-9 h-9 rounded-lg border border-cream-dark/40 hover:border-coral hover:bg-cream transition-all flex items-center justify-center" data-icon="${e}">${e}</button>`).join('')}
+      </div>
+      <div class="text-xs text-ink/40 mb-4">Selected: <span id="selected-icon-preview">📦</span></div>
+      <input id="new-cat-icon" type="hidden" value="📦">
+
+      <div id="cat-error" class="text-coral text-sm mb-3 hidden"></div>
+
+      <div class="flex gap-3">
+        <button onclick="closeCatModal()" class="btn-ghost flex-1">Cancel</button>
+        <button onclick="saveCustomCategory()" class="btn-primary flex-1">Add to Household ✓</button>
+      </div>
+      <p class="text-xs text-ink/40 text-center mt-3">👨‍👩‍👧 Visible to all household members</p>
+    </div>
   </div>`;
 }
+
+// ── Custom category helpers ──────────────────────
+function openCatModal(bucket){
+  const ov = document.getElementById('custom-cat-overlay');
+  if(!ov) return;
+  document.getElementById('new-cat-bucket').value = bucket||'wants';
+  document.getElementById('new-cat-name').value = '';
+  document.getElementById('new-cat-icon').value = '📦';
+  document.getElementById('selected-icon-preview').textContent = '📦';
+  document.getElementById('cat-error').classList.add('hidden');
+  document.querySelectorAll('.icon-pick-btn').forEach(b=>b.classList.remove('border-coral','bg-cream'));
+  ov.classList.remove('hidden');
+  setTimeout(()=>document.getElementById('new-cat-name')?.focus(), 60);
+}
+function closeCatModal(){
+  document.getElementById('custom-cat-overlay')?.classList.add('hidden');
+}
+function saveCustomCategory(){
+  const name   = document.getElementById('new-cat-name')?.value.trim();
+  const bucket = document.getElementById('new-cat-bucket')?.value;
+  const icon   = document.getElementById('new-cat-icon')?.value || '📦';
+  const errEl  = document.getElementById('cat-error');
+  if(!name){ errEl.textContent='Please enter a category name.'; errEl.classList.remove('hidden'); return; }
+  if(/[<>"'&]/.test(name)){ errEl.textContent='Name cannot contain < > " \' or &'; errEl.classList.remove('hidden'); return; }
+  const dup = allCategories().find(c=>c.name.toLowerCase()===name.toLowerCase());
+  if(dup){ errEl.textContent=`"${escapeHtml(name)}" already exists.`; errEl.classList.remove('hidden'); return; }
+  const BUCKET_PALETTE = {needs:'#2D6A9A',wants:'#9A4A7A',savings:'#8A7A30'};
+  const newCat = {
+    id: 'custom_' + Date.now().toString(36),
+    name, bucket, icon,
+    color: BUCKET_PALETTE[bucket]||'#666',
+    createdBy: S.user?.name || S.user?.email || 'You',
+  };
+  S.customCategories = [...(S.customCategories||[]), newCat];
+  saveState();
+  closeCatModal();
+  render();
+}
+function deleteCustomCategory(catId){
+  S.customCategories = (S.customCategories||[]).filter(c=>c.id!==catId);
+  // Remove from budget if present
+  delete S.budget[catId];
+  saveState();
+  render();
+}
+
 function attachBudgetEvents(){
   document.querySelectorAll('.budget-input').forEach(inp=>{
     inp.addEventListener('input',function(){
       S.budget[this.dataset.cat] = parseInt(this.value)||0;
-      // Update total display
       const total = Object.values(S.budget).reduce((s,v)=>s+(v||0),0);
       const el = document.getElementById('budget-total-display');
       if(el){ el.textContent = fmt.currencyAbs(total); el.className = `font-700 ${total>8400?'text-coral':'text-ink'}`; }
@@ -1421,6 +1592,28 @@ function attachBudgetEvents(){
     btn.textContent='✅ Saved!'; btn.disabled=true;
     setTimeout(()=>{ if(btn){ btn.textContent='Save Budget ✓'; btn.disabled=false; }},2000);
   });
+  // Add-category buttons
+  document.querySelectorAll('.add-cat-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>openCatModal(btn.dataset.bucket));
+  });
+  // Delete custom category buttons
+  document.querySelectorAll('.del-cat-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(confirm(`Delete the "${cat(btn.dataset.catId).name}" category? Transactions already tagged to it will show as "Other".`))
+        deleteCustomCategory(btn.dataset.catId);
+    });
+  });
+  // Icon picker inside modal
+  document.querySelectorAll('.icon-pick-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById('new-cat-icon').value = btn.dataset.icon;
+      document.getElementById('selected-icon-preview').textContent = btn.dataset.icon;
+      document.querySelectorAll('.icon-pick-btn').forEach(b=>b.classList.remove('border-coral','bg-cream'));
+      btn.classList.add('border-coral','bg-cream');
+    });
+  });
+  // Enter key in name field submits modal
+  document.getElementById('new-cat-name')?.addEventListener('keydown', e=>{ if(e.key==='Enter') saveCustomCategory(); });
 }
 
 // ═══════════════════════════════════════════════
@@ -1476,7 +1669,10 @@ function renderChat(){
       </div>
       <button id="chat-send" class="btn-primary h-[52px] px-6 whitespace-nowrap">Send ✨</button>
     </div>
-    <div class="text-xs text-ink/40 text-center mt-2">Not financial advice · Answers are based on your household data only</div>
+    <div class="text-xs text-ink/40 text-center mt-2 flex items-center justify-center gap-3">
+      <span>Not financial advice · Answers are based on your household data only</span>
+      <span class="inline-flex items-center gap-1 bg-sage/10 border border-sage/30 rounded-full px-2 py-0.5 text-sage font-600" title="Names and personal identifiers are removed before your data is sent to the AI">🔒 PII scrubbed before AI</span>
+    </div>
   </div>`;
 }
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
